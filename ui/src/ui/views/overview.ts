@@ -241,21 +241,15 @@ export function renderOverview(props: OverviewProps) {
         ${
           !props.connected
             ? html`
-                <div style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 14px;">
-                  <div style="font-weight: 600; font-size: 13px; margin-bottom: 10px;">${t("overview.connection.title")}</div>
-                  <ol class="muted" style="margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.8;">
-                    <li>${t("overview.connection.step1")}
-                      <div class="mono" style="font-size: 12px; margin: 4px 0 6px;">openclaw gateway run</div>
-                    </li>
-                    <li>${t("overview.connection.step2")}
-                      <div class="mono" style="font-size: 12px; margin: 4px 0 6px;">openclaw dashboard --no-open</div>
-                    </li>
+                <div class="login-gate__help" style="margin-top: 16px;">
+                  <div class="login-gate__help-title">${t("overview.connection.title")}</div>
+                  <ol class="login-gate__steps">
+                    <li>${t("overview.connection.step1")}<code>openclaw gateway run</code></li>
+                    <li>${t("overview.connection.step2")}<code>openclaw dashboard --no-open</code></li>
                     <li>${t("overview.connection.step3")}</li>
-                    <li>${t("overview.connection.step4")}
-                      <div class="mono" style="font-size: 12px; margin: 4px 0 6px;">openclaw doctor --generate-gateway-token</div>
-                    </li>
+                    <li>${t("overview.connection.step4")}<code>openclaw doctor --generate-gateway-token</code></li>
                   </ol>
-                  <div class="muted" style="font-size: 12px; margin-top: 10px;">
+                  <div class="login-gate__docs">
                     ${t("overview.connection.docsHint")}
                     <a
                       class="session-link"

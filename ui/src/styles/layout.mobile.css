@@ -377,4 +377,21 @@
     height: 24px;
     font-size: 12px;
   }
+
+  .cron-status-strip {
+    gap: 10px;
+    padding: 8px 12px;
+  }
+
+  .cron-status-strip__sep {
+    display: none;
+  }
+
+  .cron-status-strip__value {
+    font-size: 13px;
+  }
+
+  .cron-status-strip > .btn {
+    margin-left: 0;
+  }
 }

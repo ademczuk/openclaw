@@ -91,7 +91,7 @@ export function renderCron(props: CronProps) {
     <section class="card cron-new-job">
       <div class="card-title">New Job</div>
       <div class="card-sub">Create a scheduled wakeup or agent run.</div>
-        <div class="form-grid" style="margin-top: 16px;">
+        <div class="form-grid" style="margin-top: 14px;">
           <label class="field">
             <span>Name</span>
             <input

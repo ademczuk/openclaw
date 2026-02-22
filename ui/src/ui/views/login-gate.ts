@@ -61,17 +61,13 @@ export function renderLoginGate(state: AppViewState) {
             : ""
         }
         <div class="login-gate__help">
-          <div style="font-weight: 600; font-size: 12px; margin-bottom: 8px;">${t("overview.connection.title")}</div>
-          <ol class="muted" style="margin: 0; padding-left: 16px; font-size: 12px; line-height: 1.7;">
-            <li>${t("overview.connection.step1")}
-              <div class="mono" style="font-size: 11px; margin: 2px 0 4px;">openclaw gateway run</div>
-            </li>
-            <li>${t("overview.connection.step2")}
-              <div class="mono" style="font-size: 11px; margin: 2px 0 4px;">openclaw dashboard --no-open</div>
-            </li>
+          <div class="login-gate__help-title">${t("overview.connection.title")}</div>
+          <ol class="login-gate__steps">
+            <li>${t("overview.connection.step1")}<code>openclaw gateway run</code></li>
+            <li>${t("overview.connection.step2")}<code>openclaw dashboard --no-open</code></li>
             <li>${t("overview.connection.step3")}</li>
           </ol>
-          <div class="muted" style="font-size: 11px; margin-top: 8px;">
+          <div class="login-gate__docs">
             <a
               class="session-link"
               href="https://docs.openclaw.ai/web/dashboard"
