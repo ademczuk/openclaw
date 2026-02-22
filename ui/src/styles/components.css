@@ -808,6 +808,38 @@
   }
 }
 
+/* Context usage notice */
+.context-notice {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  padding: 4px 12px;
+  margin-bottom: 4px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--ctx-color, #d97706);
+  background: var(--ctx-bg, rgba(217, 119, 6, 0.08));
+  color: var(--ctx-color, #d97706);
+  white-space: nowrap;
+  user-select: none;
+  animation: fade-in 0.2s var(--ease-out);
+}
+
+.context-notice__icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.context-notice__detail {
+  opacity: 0.7;
+  font-size: 11px;
+  font-weight: 400;
+}
+
 /* ===========================================
    Code Blocks
    =========================================== */
@@ -2193,7 +2225,7 @@
 
 .agents-control-row {
   display: grid;
-  grid-template-columns: 1fr 2fr;
+  grid-template-columns: 5fr 1fr;
   gap: 4px;
   align-items: stretch;
 }

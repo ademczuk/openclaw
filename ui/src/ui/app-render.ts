@@ -1164,6 +1164,9 @@ export function renderApp(state: AppViewState) {
                 onSave: () => saveConfig(state),
                 onApply: () => applyConfig(state),
                 onUpdate: () => runUpdate(state),
+                version:
+                  (state.hello?.snapshot as { server?: { version?: string } } | undefined)?.server
+                    ?.version ?? "",
               })
             : nothing
         }

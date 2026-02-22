@@ -34,6 +34,7 @@ export type ConfigProps = {
   onSave: () => void;
   onApply: () => void;
   onUpdate: () => void;
+  version: string;
 };
 
 // SVG Icons for sidebar (Lucide-style)
@@ -264,21 +265,87 @@ const sidebarIcons = {
   `,
 };
 
-// Section definitions
-const SECTIONS: Array<{ key: string; label: string }> = [
-  { key: "env", label: "Environment" },
-  { key: "update", label: "Updates" },
-  { key: "agents", label: "Agents" },
-  { key: "auth", label: "Authentication" },
-  { key: "channels", label: "Channels" },
-  { key: "messages", label: "Messages" },
-  { key: "commands", label: "Commands" },
-  { key: "hooks", label: "Hooks" },
-  { key: "skills", label: "Skills" },
-  { key: "tools", label: "Tools" },
-  { key: "gateway", label: "Gateway" },
-  { key: "wizard", label: "Setup Wizard" },
+// Categorised section definitions
+type SectionCategory = {
+  id: string;
+  label: string;
+  sections: Array<{ key: string; label: string }>;
+};
+
+const SECTION_CATEGORIES: SectionCategory[] = [
+  {
+    id: "core",
+    label: "Core",
+    sections: [
+      { key: "env", label: "Environment" },
+      { key: "auth", label: "Authentication" },
+      { key: "update", label: "Updates" },
+      { key: "meta", label: "Meta" },
+      { key: "logging", label: "Logging" },
+    ],
+  },
+  {
+    id: "ai",
+    label: "AI & Agents",
+    sections: [
+      { key: "agents", label: "Agents" },
+      { key: "models", label: "Models" },
+      { key: "skills", label: "Skills" },
+      { key: "tools", label: "Tools" },
+      { key: "memory", label: "Memory" },
+      { key: "session", label: "Session" },
+    ],
+  },
+  {
+    id: "communication",
+    label: "Communication",
+    sections: [
+      { key: "channels", label: "Channels" },
+      { key: "messages", label: "Messages" },
+      { key: "broadcast", label: "Broadcast" },
+      { key: "talk", label: "Talk" },
+      { key: "audio", label: "Audio" },
+    ],
+  },
+  {
+    id: "automation",
+    label: "Automation",
+    sections: [
+      { key: "commands", label: "Commands" },
+      { key: "hooks", label: "Hooks" },
+      { key: "bindings", label: "Bindings" },
+      { key: "cron", label: "Cron" },
+      { key: "approvals", label: "Approvals" },
+      { key: "plugins", label: "Plugins" },
+    ],
+  },
+  {
+    id: "infrastructure",
+    label: "Infrastructure",
+    sections: [
+      { key: "gateway", label: "Gateway" },
+      { key: "web", label: "Web" },
+      { key: "browser", label: "Browser" },
+      { key: "nodeHost", label: "NodeHost" },
+      { key: "canvasHost", label: "CanvasHost" },
+      { key: "discovery", label: "Discovery" },
+      { key: "media", label: "Media" },
+    ],
+  },
+  {
+    id: "appearance",
+    label: "Appearance & Setup",
+    sections: [
+      { key: "ui", label: "UI" },
+      { key: "wizard", label: "Setup Wizard" },
+    ],
+  },
 ];
+
+// Flat lookup: all categorised keys
+const CATEGORISED_KEYS = new Set(SECTION_CATEGORIES.flatMap((c) => c.sections.map((s) => s.key)));
+
+const collapsedCategories = new Set<string>();
 
 type SubsectionEntry = {
   key: string;
@@ -423,23 +490,28 @@ function countSensitiveValues(formValue: Record<string, unknown> | null): number
 
 let rawRevealed = false;
 let sidebarCollapsed = false;
+let validityDismissed = false;
 
 export function renderConfig(props: ConfigProps) {
   const validity = props.valid == null ? "unknown" : props.valid ? "valid" : "invalid";
   const analysis = analyzeConfigSchema(props.schema);
   const formUnsafe = analysis.schema ? analysis.unsupportedPaths.length > 0 : false;
 
-  // Get available sections from schema
+  // Build categorised nav from schema — only include sections that exist in the schema
   const schemaProps = analysis.schema?.properties ?? {};
-  const availableSections = SECTIONS.filter((s) => s.key in schemaProps);
 
-  // Add any sections in schema but not in our list
-  const knownKeys = new Set(SECTIONS.map((s) => s.key));
+  const visibleCategories = SECTION_CATEGORIES.map((cat) => ({
+    ...cat,
+    sections: cat.sections.filter((s) => s.key in schemaProps),
+  })).filter((cat) => cat.sections.length > 0);
+
+  // Catch any schema keys not in our categories
   const extraSections = Object.keys(schemaProps)
-    .filter((k) => !knownKeys.has(k))
+    .filter((k) => !CATEGORISED_KEYS.has(k))
     .map((k) => ({ key: k, label: k.charAt(0).toUpperCase() + k.slice(1) }));
 
-  const allSections = [...availableSections, ...extraSections];
+  const otherCategory: SectionCategory | null =
+    extraSections.length > 0 ? { id: "other", label: "Other", sections: extraSections } : null;
 
   const activeSectionSchema =
     props.activeSection && analysis.schema && schemaType(analysis.schema) === "object"
@@ -492,13 +564,6 @@ export function renderConfig(props: ConfigProps) {
         <div class="config-sidebar__header">
           <div class="config-sidebar__title">Settings</div>
           <div class="config-sidebar__header-right">
-            ${
-              validity === "invalid"
-                ? html`
-                    <span class="pill pill--sm pill--danger">invalid</span>
-                  `
-                : ""
-            }
             <button
               class="config-sidebar__collapse-btn"
               title="${sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}"
@@ -525,6 +590,9 @@ export function renderConfig(props: ConfigProps) {
           </div>
         </div>
 
+        ${
+          props.formMode === "form"
+            ? html`
         <!-- Search -->
         <div class="config-search">
           <svg
@@ -567,20 +635,62 @@ export function renderConfig(props: ConfigProps) {
             <span class="config-nav__icon">${sidebarIcons.all}</span>
             <span class="config-nav__label">All Settings</span>
           </button>
-          ${allSections.map(
-            (section) => html`
-              <button
-                class="config-nav__item ${props.activeSection === section.key ? "active" : ""}"
-                @click=${() => props.onSectionChange(section.key)}
-              >
-                <span class="config-nav__icon"
-                  >${getSectionIcon(section.key)}</span
+          ${[...visibleCategories, ...(otherCategory ? [otherCategory] : [])].map(
+            (cat) => html`
+              <div class="config-nav__category ${collapsedCategories.has(cat.id) ? "collapsed" : ""}">
+                <button
+                  class="config-nav__category-header"
+                  @click=${(e: Event) => {
+                    if (collapsedCategories.has(cat.id)) {
+                      collapsedCategories.delete(cat.id);
+                    } else {
+                      collapsedCategories.add(cat.id);
+                    }
+                    const group = (e.currentTarget as HTMLElement).closest(".config-nav__category");
+                    group?.classList.toggle("collapsed", collapsedCategories.has(cat.id));
+                  }}
                 >
-                <span class="config-nav__label">${section.label}</span>
-              </button>
+                  <svg class="config-nav__category-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                  <span>${cat.label}</span>
+                </button>
+                <div class="config-nav__category-items">
+                  ${cat.sections.map(
+                    (section) => html`
+                      <button
+                        class="config-nav__item ${props.activeSection === section.key ? "active" : ""}"
+                        @click=${() => props.onSectionChange(section.key)}
+                      >
+                        <span class="config-nav__icon"
+                          >${getSectionIcon(section.key)}</span
+                        >
+                        <span class="config-nav__label">${section.label}</span>
+                      </button>
+                    `,
+                  )}
+                </div>
+              </div>
             `,
           )}
         </nav>
+        `
+            : nothing
+        }
+
+        ${
+          props.version
+            ? html`
+            <div class="config-sidebar__version" title=${`v${props.version}`}>
+              ${
+                sidebarCollapsed
+                  ? html`<span class="config-sidebar__version-text">${props.version.replace(/^\d{4}\./, "")}</span>`
+                  : html`<span class="config-sidebar__version-text">v${props.version}</span>`
+              }
+            </div>
+          `
+            : nothing
+        }
 
         <!-- Mode toggle at bottom -->
         <div class="config-sidebar__footer">
@@ -654,6 +764,28 @@ export function renderConfig(props: ConfigProps) {
             </button>
           </div>
         </div>
+
+        ${
+          validity === "invalid" && !validityDismissed
+            ? html`
+              <div class="config-validity-warning">
+                <svg class="config-validity-warning__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                <span class="config-validity-warning__text">Your configuration is invalid. Some settings may not work as expected.</span>
+                <button
+                  class="btn btn--sm"
+                  @click=${() => {
+                    validityDismissed = true;
+                    props.onRawChange(props.raw);
+                  }}
+                >Don't remind again</button>
+              </div>
+            `
+            : nothing
+        }
 
         <!-- Diff panel (form mode only - raw mode doesn't have granular diff) -->
         ${
