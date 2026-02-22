@@ -36,6 +36,11 @@ describe("config view", () => {
     onApply: vi.fn(),
     onUpdate: vi.fn(),
     onSubsectionChange: vi.fn(),
+    version: "2026.2.22",
+    theme: "dark" as const,
+    setTheme: vi.fn(),
+    gatewayUrl: "ws://127.0.0.1:18789",
+    assistantName: "OpenClaw",
   });
 
   it("allows save with mixed union schemas", () => {
@@ -177,6 +182,58 @@ describe("config view", () => {
     expect(btn).toBeTruthy();
     btn?.click();
     expect(onSectionChange).toHaveBeenCalledWith("gateway");
+  });
+
+  it("adds section-active class when activeSection is set", () => {
+    const container = document.createElement("div");
+    render(
+      renderConfig({
+        ...baseProps(),
+        activeSection: "gateway",
+        schema: {
+          type: "object",
+          properties: {
+            gateway: { type: "object", properties: {} },
+          },
+        },
+      }),
+      container,
+    );
+
+    const layout = container.querySelector(".config-layout");
+    expect(layout?.classList.contains("config-layout--section-active")).toBe(true);
+  });
+
+  it("does not add section-active class when no section is selected", () => {
+    const container = document.createElement("div");
+    render(renderConfig(baseProps()), container);
+
+    const layout = container.querySelector(".config-layout");
+    expect(layout?.classList.contains("config-layout--section-active")).toBe(false);
+  });
+
+  it("renders mobile back button that calls onSectionChange(null)", () => {
+    const container = document.createElement("div");
+    const onSectionChange = vi.fn();
+    render(
+      renderConfig({
+        ...baseProps(),
+        activeSection: "gateway",
+        onSectionChange,
+        schema: {
+          type: "object",
+          properties: {
+            gateway: { type: "object", properties: {} },
+          },
+        },
+      }),
+      container,
+    );
+
+    const backBtn = container.querySelector(".config-mobile-back");
+    expect(backBtn).not.toBeNull();
+    (backBtn as HTMLElement)?.click();
+    expect(onSectionChange).toHaveBeenCalledWith(null);
   });
 
   it("wires search input to onSearchChange", () => {

@@ -1,5 +1,8 @@
 import { html, nothing } from "lit";
+import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { formatRelativeTimestamp } from "../format.ts";
+import { icons } from "../icons.ts";
+import { toSanitizedMarkdownHtml } from "../markdown.ts";
 import {
   formatCronPayload,
   formatCronSchedule,
@@ -457,6 +460,21 @@ export function renderAgentFiles(params: {
                             <div class="agent-file-actions">
                               <button
                                 class="btn btn--sm"
+                                title="Preview rendered markdown"
+                                @click=${(e: Event) => {
+                                  const btn = e.currentTarget as HTMLElement;
+                                  const dialog = btn
+                                    .closest(".agent-files-editor")
+                                    ?.querySelector("dialog");
+                                  if (dialog) {
+                                    dialog.showModal();
+                                  }
+                                }}
+                              >
+                                ${icons.eye} Preview
+                              </button>
+                              <button
+                                class="btn btn--sm"
                                 ?disabled=${!isDirty}
                                 @click=${() => params.onFileReset(activeEntry.name)}
                               >
@@ -491,6 +509,30 @@ export function renderAgentFiles(params: {
                                 )}
                             ></textarea>
                           </label>
+                          <dialog
+                            class="md-preview-dialog"
+                            @click=${(e: Event) => {
+                              const dialog = e.currentTarget as HTMLDialogElement;
+                              if (e.target === dialog) {
+                                dialog.close();
+                              }
+                            }}
+                          >
+                            <div class="md-preview-dialog__panel">
+                              <div class="md-preview-dialog__header">
+                                <div class="md-preview-dialog__title mono">${activeEntry.name}</div>
+                                <button
+                                  class="btn btn--sm"
+                                  @click=${(e: Event) => {
+                                    (e.currentTarget as HTMLElement).closest("dialog")?.close();
+                                  }}
+                                >${icons.x} Close</button>
+                              </div>
+                              <div class="md-preview-dialog__body sidebar-markdown">
+                                ${unsafeHTML(toSanitizedMarkdownHtml(draft))}
+                              </div>
+                            </div>
+                          </dialog>
                         `
                   }
                 </div>

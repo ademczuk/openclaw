@@ -463,3 +463,138 @@ export function renderThemeToggle(state: AppViewState) {
     </div>
   `;
 }
+
+/* ── Sidebar Theme Selector ── */
+
+type ThemePreview = {
+  id: ThemeMode;
+  label: string;
+  bg: string;
+  sidebar: string;
+  accent: string;
+  glow: string;
+};
+
+const SIDEBAR_THEMES: ThemePreview[] = [
+  {
+    id: "dark",
+    label: "Claw",
+    bg: "#040810",
+    sidebar: "#06090f",
+    accent: "#ca3a29",
+    glow: "#00d4aa",
+  },
+  {
+    id: "light",
+    label: "Light",
+    bg: "#f5f2eb",
+    sidebar: "#ddd7cc",
+    accent: "#c73526",
+    glow: "#1a9e7e",
+  },
+  {
+    id: "openknot",
+    label: "Knot",
+    bg: "#000000",
+    sidebar: "#080808",
+    accent: "#a78bfa",
+    glow: "#c4b5fd",
+  },
+  {
+    id: "fieldmanual",
+    label: "Field",
+    bg: "#0e0e0e",
+    sidebar: "#121212",
+    accent: "#ca3a29",
+    glow: "#61d6ff",
+  },
+  {
+    id: "clawdash",
+    label: "Chrome",
+    bg: "#050507",
+    sidebar: "#08080c",
+    accent: "#ca3a29",
+    glow: "#c0c8d4",
+  },
+];
+
+function themeSwatchPick(state: AppViewState, theme: ThemePreview, e: Event) {
+  if (theme.id !== state.theme) {
+    const el = e.currentTarget as HTMLElement;
+    state.setTheme(theme.id, { element: el });
+  }
+}
+
+export function renderSidebarThemeSelector(state: AppViewState) {
+  const isCollapsed = state.settings.navCollapsed;
+  const current = SIDEBAR_THEMES.find((tp) => tp.id === state.theme) ?? SIDEBAR_THEMES[0];
+
+  if (isCollapsed) {
+    const toggleOpen = (e: Event) => {
+      const selector = (e.currentTarget as HTMLElement).closest(".theme-selector");
+      if (!selector) {
+        return;
+      }
+      const isOpen = selector.classList.contains("theme-selector--open");
+      if (isOpen) {
+        selector.classList.remove("theme-selector--open");
+      } else {
+        selector.classList.add("theme-selector--open");
+        const close = (ev: MouseEvent) => {
+          if (!selector.contains(ev.target as Node)) {
+            selector.classList.remove("theme-selector--open");
+            document.removeEventListener("click", close);
+          }
+        };
+        requestAnimationFrame(() => document.addEventListener("click", close));
+      }
+    };
+
+    return html`
+      <div class="theme-selector theme-selector--collapsed">
+        <button
+          class="theme-swatch theme-swatch--current"
+          title="${t("common.theme")}: ${current.label}"
+          style="--sw-bg:${current.bg};--sw-sidebar:${current.sidebar};--sw-accent:${current.accent};--sw-glow:${current.glow}"
+          @click=${toggleOpen}
+        ></button>
+        <div class="theme-selector__popover">
+          ${SIDEBAR_THEMES.map(
+            (tp) => html`
+              <button
+                class="theme-swatch ${tp.id === state.theme ? "theme-swatch--active" : ""}"
+                title=${tp.label}
+                style="--sw-bg:${tp.bg};--sw-sidebar:${tp.sidebar};--sw-accent:${tp.accent};--sw-glow:${tp.glow}"
+                @click=${(e: Event) => {
+                  themeSwatchPick(state, tp, e);
+                  const sel = (e.currentTarget as HTMLElement).closest(".theme-selector");
+                  sel?.classList.remove("theme-selector--open");
+                }}
+              ></button>
+            `,
+          )}
+        </div>
+      </div>
+    `;
+  }
+
+  return html`
+    <div class="theme-selector">
+      <div class="theme-selector__swatches">
+        ${SIDEBAR_THEMES.map(
+          (tp) => html`
+            <button
+              class="theme-swatch ${tp.id === state.theme ? "theme-swatch--active" : ""}"
+              title=${tp.label}
+              aria-label="${t("common.theme")}: ${tp.label}"
+              aria-pressed=${tp.id === state.theme}
+              style="--sw-bg:${tp.bg};--sw-sidebar:${tp.sidebar};--sw-accent:${tp.accent};--sw-glow:${tp.glow}"
+              @click=${(e: Event) => themeSwatchPick(state, tp, e)}
+            ></button>
+          `,
+        )}
+      </div>
+      <span class="theme-selector__current">${current.label}</span>
+    </div>
+  `;
+}

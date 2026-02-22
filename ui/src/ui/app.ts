@@ -92,6 +92,28 @@ declare global {
 
 const bootAssistantIdentity = normalizeAssistantIdentity({});
 
+function exportChatMarkdown(messages: unknown[], assistantName: string): void {
+  const history = Array.isArray(messages) ? messages : [];
+  if (history.length === 0) {
+    return;
+  }
+  const lines: string[] = [`# Chat with ${assistantName}`, ""];
+  for (const msg of history) {
+    const m = msg as Record<string, unknown>;
+    const role = m.role === "user" ? "You" : m.role === "assistant" ? assistantName : "Tool";
+    const content = typeof m.content === "string" ? m.content : "";
+    const ts = typeof m.timestamp === "number" ? new Date(m.timestamp).toISOString() : "";
+    lines.push(`## ${role}${ts ? ` (${ts})` : ""}`, "", content, "");
+  }
+  const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `chat-${assistantName}-${Date.now()}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function resolveOnboardingMode(): boolean {
   if (!window.location.search) {
     return false;
@@ -149,6 +171,9 @@ export class OpenClawApp extends LitElement {
   @state() chatQueue: ChatQueueItem[] = [];
   @state() chatAttachments: ChatAttachment[] = [];
   @state() chatManualRefreshInFlight = false;
+
+  onSlashAction?: (action: string) => void;
+
   // Sidebar state for tool output viewing
   @state() sidebarOpen = false;
   @state() sidebarContent: string | null = null;
@@ -391,6 +416,19 @@ export class OpenClawApp extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this.onSlashAction = (action: string) => {
+      switch (action) {
+        case "toggle-focus":
+          this.applySettings({
+            ...this.settings,
+            chatFocusMode: !this.settings.chatFocusMode,
+          });
+          break;
+        case "export":
+          exportChatMarkdown(this.chatMessages, this.assistantName);
+          break;
+      }
+    };
     handleConnected(this as unknown as Parameters<typeof handleConnected>[0]);
   }
 

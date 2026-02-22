@@ -393,11 +393,19 @@ function selectSlashCommand(
   props: ChatProps,
   requestUpdate: () => void,
 ): void {
-  const text = `/${cmd.name} `;
-  props.onDraftChange(text);
   slashMenuOpen = false;
   slashMenuItems = [];
-  requestUpdate();
+
+  if (cmd.executeLocal && !cmd.args) {
+    // No-arg local commands: execute immediately via send flow
+    props.onDraftChange(`/${cmd.name}`);
+    requestUpdate();
+    props.onSend();
+  } else {
+    // Commands needing args: insert and let user type arguments
+    props.onDraftChange(`/${cmd.name} `);
+    requestUpdate();
+  }
 }
 
 function tokenEstimate(draft: string): string | null {
@@ -598,6 +606,13 @@ function renderSlashMenu(
               <span class="slash-menu-name">/${cmd.name}</span>
               ${cmd.args ? html`<span class="slash-menu-args">${cmd.args}</span>` : nothing}
               <span class="slash-menu-desc">${cmd.description}</span>
+              ${
+                cmd.executeLocal && !cmd.args
+                  ? html`
+                      <span class="slash-menu-badge">instant</span>
+                    `
+                  : nothing
+              }
             </div>
           `,
         )}
@@ -605,7 +620,16 @@ function renderSlashMenu(
     `);
   }
 
-  return html`<div class="slash-menu">${sections}</div>`;
+  return html`
+    <div class="slash-menu">
+      ${sections}
+      <div class="slash-menu-footer">
+        <kbd>↑↓</kbd> navigate
+        <kbd>Tab</kbd> select
+        <kbd>Esc</kbd> close
+      </div>
+    </div>
+  `;
 }
 
 export function renderChat(props: ChatProps) {
@@ -718,6 +742,8 @@ export function renderChat(props: ChatProps) {
               assistantName: props.assistantName,
               assistantAvatar: assistantIdentity.avatar,
               basePath: props.basePath,
+              contextWindow:
+                activeSession?.contextTokens ?? props.sessions?.defaults?.contextTokens ?? null,
               onDelete: () => {
                 deleted.delete(item.key);
                 requestUpdate();

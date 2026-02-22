@@ -54,6 +54,60 @@
   opacity: 0.7;
 }
 
+/* Per-message metadata (tokens, cost, model, context %) */
+.msg-meta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+  margin-left: 2px;
+}
+
+.chat-group-footer:hover .msg-meta {
+  opacity: 1;
+}
+
+.msg-meta__tokens {
+  color: var(--muted);
+}
+
+.msg-meta__cache {
+  color: var(--muted);
+  opacity: 0.8;
+}
+
+.msg-meta__cost {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.msg-meta__ctx {
+  color: var(--muted);
+}
+
+.msg-meta__ctx--warn {
+  color: var(--warn, #d97706);
+  font-weight: 500;
+}
+
+.msg-meta__ctx--danger {
+  color: var(--danger, #dc2626);
+  font-weight: 600;
+}
+
+.msg-meta__model {
+  color: var(--muted);
+  opacity: 0.8;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Chat divider (e.g., compaction marker) */
 .chat-divider {
   display: flex;

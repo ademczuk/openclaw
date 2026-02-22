@@ -9,8 +9,8 @@ import { renderUsageTab } from "./app-render-usage-tab.ts";
 import {
   renderChatControls,
   renderChatSessionSelect,
+  renderSidebarThemeSelector,
   renderTab,
-  renderThemeToggle,
 } from "./app-render.helpers.ts";
 import type { AppViewState } from "./app-view-state.ts";
 import { loadAgentFileContent, loadAgentFiles, saveAgentFile } from "./controllers/agent-files.ts";
@@ -193,14 +193,7 @@ export function renderApp(state: AppViewState) {
           <span class="topbar-search__label">${t("common.search")}</span>
           <kbd class="topbar-search__kbd">⌘K</kbd>
         </button>
-        <div class="topbar-status">
-          <div class="topbar-connection ${state.connected ? "topbar-connection--ok" : ""}">
-            <span class="topbar-connection__dot"></span>
-            <span class="topbar-connection__label">${state.connected ? t("common.ok") : t("common.offline")}</span>
-          </div>
-          <span class="topbar-divider"></span>
-          ${renderThemeToggle(state)}
-        </div>
+        <div class="topbar-status"></div>
       </header>
       <div class="shell-nav">
       <aside class="sidebar ${state.settings.navCollapsed ? "sidebar--collapsed" : ""}">
@@ -268,6 +261,7 @@ export function renderApp(state: AppViewState) {
         </nav>
 
         <div class="sidebar-footer">
+          ${renderSidebarThemeSelector(state)}
           <div class="sidebar-footer__docs-block">
             <a
               class="nav-item nav-item--external"
@@ -1167,6 +1161,10 @@ export function renderApp(state: AppViewState) {
                 version:
                   (state.hello?.snapshot as { server?: { version?: string } } | undefined)?.server
                     ?.version ?? "",
+                theme: state.theme,
+                setTheme: (t, ctx) => state.setTheme(t, ctx),
+                gatewayUrl: state.settings.gatewayUrl,
+                assistantName: state.assistantName,
               })
             : nothing
         }

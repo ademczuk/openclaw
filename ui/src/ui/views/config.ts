@@ -1,5 +1,7 @@
 import { html, nothing } from "lit";
 import { icons } from "../icons.ts";
+import type { ThemeTransitionContext } from "../theme-transition.ts";
+import type { ThemeMode } from "../theme.ts";
 import type { ConfigUiHints } from "../types.ts";
 import { hintForPath, humanize, schemaType, type JsonSchema } from "./config-form.shared.ts";
 import { analyzeConfigSchema, renderConfigForm, SECTION_META } from "./config-form.ts";
@@ -35,6 +37,10 @@ export type ConfigProps = {
   onApply: () => void;
   onUpdate: () => void;
   version: string;
+  theme: ThemeMode;
+  setTheme: (theme: ThemeMode, context?: ThemeTransitionContext) => void;
+  gatewayUrl: string;
+  assistantName: string;
 };
 
 // SVG Icons for sidebar (Lucide-style)
@@ -257,6 +263,19 @@ const sidebarIcons = {
       <path d="m19.07 10.93-4.24 4.24"></path>
     </svg>
   `,
+  __appearance__: html`
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  `,
   default: html`
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -336,6 +355,7 @@ const SECTION_CATEGORIES: SectionCategory[] = [
     id: "appearance",
     label: "Appearance & Setup",
     sections: [
+      { key: "__appearance__", label: "Appearance" },
       { key: "ui", label: "UI" },
       { key: "wizard", label: "Setup Wizard" },
     ],
@@ -488,6 +508,85 @@ function countSensitiveValues(formValue: Record<string, unknown> | null): number
   return count;
 }
 
+type ThemeOption = { id: ThemeMode; label: string; description: string; icon: string };
+const THEME_OPTIONS: ThemeOption[] = [
+  { id: "dark", label: "Claw", description: "Dark theme with red accents", icon: "🦀" },
+  { id: "light", label: "Light", description: "Clean light theme", icon: "☀️" },
+  { id: "openknot", label: "Knot", description: "Warm earthy tones", icon: "🪢" },
+  { id: "fieldmanual", label: "Field", description: "Olive & tan field notes", icon: "🏕️" },
+  { id: "clawdash", label: "Chrome", description: "Cool metallic blue", icon: "💎" },
+];
+
+function renderAppearanceSection(props: ConfigProps) {
+  return html`
+    <div class="settings-appearance">
+      <div class="settings-appearance__section">
+        <h3 class="settings-appearance__heading">Theme</h3>
+        <p class="settings-appearance__hint">Choose how the dashboard looks.</p>
+        <div class="settings-theme-grid">
+          ${THEME_OPTIONS.map(
+            (opt) => html`
+              <button
+                class="settings-theme-card ${opt.id === props.theme ? "settings-theme-card--active" : ""}"
+                @click=${(e: Event) => {
+                  if (opt.id !== props.theme) {
+                    const context: ThemeTransitionContext = {
+                      element: (e.currentTarget as HTMLElement) ?? undefined,
+                    };
+                    props.setTheme(opt.id, context);
+                  }
+                }}
+              >
+                <span class="settings-theme-card__icon">${opt.icon}</span>
+                <span class="settings-theme-card__label">${opt.label}</span>
+                <span class="settings-theme-card__desc">${opt.description}</span>
+                ${opt.id === props.theme ? html`<span class="settings-theme-card__check">${icons.check}</span>` : nothing}
+              </button>
+            `,
+          )}
+        </div>
+      </div>
+
+      <div class="settings-appearance__section">
+        <h3 class="settings-appearance__heading">Connection</h3>
+        <div class="settings-info-grid">
+          <div class="settings-info-row">
+            <span class="settings-info-row__label">Gateway</span>
+            <span class="settings-info-row__value mono">${props.gatewayUrl || "—"}</span>
+          </div>
+          <div class="settings-info-row">
+            <span class="settings-info-row__label">Status</span>
+            <span class="settings-info-row__value">
+              <span class="settings-status-dot ${props.connected ? "settings-status-dot--ok" : ""}"></span>
+              ${props.connected ? "Connected" : "Offline"}
+            </span>
+          </div>
+          ${
+            props.version
+              ? html`
+                <div class="settings-info-row">
+                  <span class="settings-info-row__label">Version</span>
+                  <span class="settings-info-row__value mono">v${props.version}</span>
+                </div>
+              `
+              : nothing
+          }
+          ${
+            props.assistantName
+              ? html`
+                <div class="settings-info-row">
+                  <span class="settings-info-row__label">Assistant</span>
+                  <span class="settings-info-row__value">${props.assistantName}</span>
+                </div>
+              `
+              : nothing
+          }
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 let rawRevealed = false;
 let sidebarCollapsed = false;
 let validityDismissed = false;
@@ -500,9 +599,10 @@ export function renderConfig(props: ConfigProps) {
   // Build categorised nav from schema — only include sections that exist in the schema
   const schemaProps = analysis.schema?.properties ?? {};
 
+  const VIRTUAL_SECTIONS = new Set(["__appearance__"]);
   const visibleCategories = SECTION_CATEGORIES.map((cat) => ({
     ...cat,
-    sections: cat.sections.filter((s) => s.key in schemaProps),
+    sections: cat.sections.filter((s) => VIRTUAL_SECTIONS.has(s.key) || s.key in schemaProps),
   })).filter((cat) => cat.sections.length > 0);
 
   // Catch any schema keys not in our categories
@@ -513,13 +613,18 @@ export function renderConfig(props: ConfigProps) {
   const otherCategory: SectionCategory | null =
     extraSections.length > 0 ? { id: "other", label: "Other", sections: extraSections } : null;
 
+  const isVirtualSection = props.activeSection != null && VIRTUAL_SECTIONS.has(props.activeSection);
   const activeSectionSchema =
-    props.activeSection && analysis.schema && schemaType(analysis.schema) === "object"
+    props.activeSection &&
+    !isVirtualSection &&
+    analysis.schema &&
+    schemaType(analysis.schema) === "object"
       ? analysis.schema.properties?.[props.activeSection]
       : undefined;
-  const activeSectionMeta = props.activeSection
-    ? resolveSectionMeta(props.activeSection, activeSectionSchema)
-    : null;
+  const activeSectionMeta =
+    props.activeSection && !isVirtualSection
+      ? resolveSectionMeta(props.activeSection, activeSectionSchema)
+      : null;
   const subsections = props.activeSection
     ? resolveSubsections({
         key: props.activeSection,
@@ -558,7 +663,7 @@ export function renderConfig(props: ConfigProps) {
   const canUpdate = props.connected && !props.applying && !props.updating;
 
   return html`
-    <div class="config-layout ${sidebarCollapsed ? "config-layout--sidebar-collapsed" : ""}">
+    <div class="config-layout ${sidebarCollapsed ? "config-layout--sidebar-collapsed" : ""} ${props.activeSection ? "config-layout--section-active" : ""}">
       <!-- Sidebar -->
       <aside class="config-sidebar">
         <div class="config-sidebar__header">
@@ -714,6 +819,16 @@ export function renderConfig(props: ConfigProps) {
 
       <!-- Main content -->
       <main class="config-main">
+        <!-- Mobile back button (visible only on mobile when a section is active) -->
+        <button
+          class="config-mobile-back"
+          @click=${() => props.onSectionChange(null)}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          <span>Settings</span>
+        </button>
         <!-- Action bar -->
         <div class="config-actions">
           <div class="config-actions__left">
@@ -909,8 +1024,10 @@ export function renderConfig(props: ConfigProps) {
         <!-- Form content -->
         <div class="config-content ${props.activeSection === "env" ? "config-env-values--blurred" : ""}">
           ${
-            props.formMode === "form"
-              ? html`
+            props.activeSection === "__appearance__"
+              ? renderAppearanceSection(props)
+              : props.formMode === "form"
+                ? html`
                 ${
                   props.schemaLoading
                     ? html`
@@ -941,10 +1058,10 @@ export function renderConfig(props: ConfigProps) {
                     : nothing
                 }
               `
-              : (() => {
-                  const sensitiveCount = countSensitiveValues(props.formValue);
-                  const blurred = sensitiveCount > 0 && (props.streamMode || !rawRevealed);
-                  return html`
+                : (() => {
+                    const sensitiveCount = countSensitiveValues(props.formValue);
+                    const blurred = sensitiveCount > 0 && (props.streamMode || !rawRevealed);
+                    return html`
                     <label class="field config-raw-field">
                       <span style="display:flex;align-items:center;gap:8px;">
                         Raw JSON5
@@ -977,7 +1094,7 @@ export function renderConfig(props: ConfigProps) {
                       ></textarea>
                     </label>
                   `;
-                })()
+                  })()
           }
         </div>
 

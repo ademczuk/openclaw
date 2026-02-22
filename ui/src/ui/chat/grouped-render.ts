@@ -115,6 +115,7 @@ export function renderMessageGroup(
     assistantName?: string;
     assistantAvatar?: string | null;
     basePath?: string;
+    contextWindow?: number | null;
     onDelete?: () => void;
   },
 ) {
@@ -132,6 +133,9 @@ export function renderMessageGroup(
     hour: "numeric",
     minute: "2-digit",
   });
+
+  // Aggregate usage/cost/model across all messages in the group
+  const meta = extractGroupMeta(group, opts.contextWindow ?? null);
 
   return html`
     <div class="chat-group ${roleClass}">
@@ -157,6 +161,7 @@ export function renderMessageGroup(
         <div class="chat-group-footer">
           <span class="chat-sender-name">${who}</span>
           <span class="chat-group-timestamp">${timestamp}</span>
+          ${renderMessageMeta(meta)}
           ${
             opts.onDelete
               ? html`<button
@@ -173,6 +178,124 @@ export function renderMessageGroup(
   `;
 }
 
+// ── Per-message metadata (tokens, cost, model, context %) ──
+
+type GroupMeta = {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+  cost: number;
+  model: string | null;
+  contextPercent: number | null;
+};
+
+function extractGroupMeta(group: MessageGroup, contextWindow: number | null): GroupMeta | null {
+  let input = 0;
+  let output = 0;
+  let cacheRead = 0;
+  let cacheWrite = 0;
+  let cost = 0;
+  let model: string | null = null;
+  let hasUsage = false;
+
+  for (const { message } of group.messages) {
+    const m = message as Record<string, unknown>;
+    if (m.role !== "assistant") {
+      continue;
+    }
+    const usage = m.usage as Record<string, number> | undefined;
+    if (usage) {
+      hasUsage = true;
+      input += usage.input ?? usage.inputTokens ?? 0;
+      output += usage.output ?? usage.outputTokens ?? 0;
+      cacheRead += usage.cacheRead ?? usage.cache_read_input_tokens ?? 0;
+      cacheWrite += usage.cacheWrite ?? usage.cache_creation_input_tokens ?? 0;
+    }
+    const c = m.cost as Record<string, number> | undefined;
+    if (c?.total) {
+      cost += c.total;
+    }
+    if (typeof m.model === "string" && m.model !== "gateway-injected") {
+      model = m.model;
+    }
+  }
+
+  if (!hasUsage && !model) {
+    return null;
+  }
+
+  const contextPercent =
+    contextWindow && input > 0 ? Math.min(Math.round((input / contextWindow) * 100), 100) : null;
+
+  return { input, output, cacheRead, cacheWrite, cost, model, contextPercent };
+}
+
+/** Compact token count formatter (e.g. 128000 → "128k"). */
+function fmtTokens(n: number): string {
+  if (n >= 1_000_000) {
+    return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  }
+  if (n >= 1_000) {
+    return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}k`;
+  }
+  return String(n);
+}
+
+function renderMessageMeta(meta: GroupMeta | null) {
+  if (!meta) {
+    return nothing;
+  }
+
+  const parts: Array<ReturnType<typeof html>> = [];
+
+  // Token counts: ↑input ↓output
+  if (meta.input) {
+    parts.push(html`<span class="msg-meta__tokens">↑${fmtTokens(meta.input)}</span>`);
+  }
+  if (meta.output) {
+    parts.push(html`<span class="msg-meta__tokens">↓${fmtTokens(meta.output)}</span>`);
+  }
+
+  // Cache: R/W
+  if (meta.cacheRead) {
+    parts.push(html`<span class="msg-meta__cache">R${fmtTokens(meta.cacheRead)}</span>`);
+  }
+  if (meta.cacheWrite) {
+    parts.push(html`<span class="msg-meta__cache">W${fmtTokens(meta.cacheWrite)}</span>`);
+  }
+
+  // Cost
+  if (meta.cost > 0) {
+    parts.push(html`<span class="msg-meta__cost">$${meta.cost.toFixed(4)}</span>`);
+  }
+
+  // Context %
+  if (meta.contextPercent !== null) {
+    const pct = meta.contextPercent;
+    const cls =
+      pct >= 90
+        ? "msg-meta__ctx msg-meta__ctx--danger"
+        : pct >= 75
+          ? "msg-meta__ctx msg-meta__ctx--warn"
+          : "msg-meta__ctx";
+    parts.push(html`<span class="${cls}">${pct}% ctx</span>`);
+  }
+
+  // Model
+  if (meta.model) {
+    // Shorten model name: strip provider prefix if present (e.g. "anthropic/claude-3.5-sonnet" → "claude-3.5-sonnet")
+    const shortModel = meta.model.includes("/") ? meta.model.split("/").pop()! : meta.model;
+    parts.push(html`<span class="msg-meta__model">${shortModel}</span>`);
+  }
+
+  if (parts.length === 0) {
+    return nothing;
+  }
+
+  return html`<span class="msg-meta">${parts}</span>`;
+}
+
 function renderAvatar(
   role: string,
   assistant?: Pick<AssistantIdentity, "name" | "avatar">,
@@ -183,12 +306,41 @@ function renderAvatar(
   const assistantAvatar = assistant?.avatar?.trim() || "";
   const initial =
     normalized === "user"
-      ? "U"
+      ? html`
+          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+            <circle cx="12" cy="8" r="4" />
+            <path d="M20 21a8 8 0 1 0-16 0" />
+          </svg>
+        `
       : normalized === "assistant"
-        ? assistantName.charAt(0).toUpperCase() || "A"
+        ? html`
+            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+              <path d="M12 2l2.4 7.2H22l-6 4.8 2.4 7.2L12 16l-6.4 5.2L8 14 2 9.2h7.6z" />
+            </svg>
+          `
         : normalized === "tool"
-          ? "⚙"
-          : "?";
+          ? html`
+              <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                <path
+                  d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53a7.76 7.76 0 0 0 .07-1 7.76 7.76 0 0 0-.07-.97l2.11-1.63a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.15 7.15 0 0 0-1.69-.98l-.38-2.65A.49.49 0 0 0 14 2h-4a.49.49 0 0 0-.49.42l-.38 2.65a7.15 7.15 0 0 0-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.49.49 0 0 0 .12.64L4.57 11a7.9 7.9 0 0 0 0 1.94l-2.11 1.69a.49.49 0 0 0-.12.64l2 3.46a.5.5 0 0 0 .61.22l2.49-1c.52.4 1.08.72 1.69.98l.38 2.65c.05.24.26.42.49.42h4c.23 0 .44-.18.49-.42l.38-2.65a7.15 7.15 0 0 0 1.69-.98l2.49 1a.5.5 0 0 0 .61-.22l2-3.46a.49.49 0 0 0-.12-.64z"
+                />
+              </svg>
+            `
+          : html`
+              <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                <circle cx="12" cy="12" r="10" />
+                <text
+                  x="12"
+                  y="16.5"
+                  text-anchor="middle"
+                  font-size="14"
+                  font-weight="600"
+                  fill="var(--bg, #fff)"
+                >
+                  ?
+                </text>
+              </svg>
+            `;
   const className =
     normalized === "user"
       ? "user"
