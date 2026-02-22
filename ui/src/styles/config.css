@@ -1011,17 +1011,17 @@
     background var(--duration-normal) ease;
 }
 
-.cfg-toggle input:checked+.cfg-toggle__track {
+.cfg-toggle input:checked + .cfg-toggle__track {
   background: var(--ok-subtle);
   border-color: color-mix(in srgb, var(--ok) 40%, transparent);
 }
 
-.cfg-toggle input:checked+.cfg-toggle__track::after {
+.cfg-toggle input:checked + .cfg-toggle__track::after {
   transform: translateX(22px);
   background: var(--ok);
 }
 
-.cfg-toggle input:focus+.cfg-toggle__track {
+.cfg-toggle input:focus + .cfg-toggle__track {
   box-shadow: var(--focus-ring);
 }
 

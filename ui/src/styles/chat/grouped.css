@@ -430,3 +430,103 @@ img.chat-avatar.chat-avatar--logo {
     pointer-events: auto;
   }
 }
+
+/* ─── TTS (Read Aloud) Button ─── */
+
+.chat-tts-btn {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 120ms ease-out,
+    color 120ms ease-out,
+    background 120ms ease-out;
+}
+
+.chat-tts-btn svg {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chat-group:hover .chat-tts-btn {
+  opacity: 0.5;
+  pointer-events: auto;
+}
+
+.chat-tts-btn:hover {
+  opacity: 1 !important;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.chat-tts-btn--active {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  color: var(--accent);
+}
+
+.chat-tts-btn:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+@media (hover: none) {
+  .chat-tts-btn {
+    opacity: 0.5;
+    pointer-events: auto;
+  }
+}
+
+/* ─── System / Slash Command Result Messages ─── */
+
+.chat-group.other {
+  justify-content: center;
+}
+
+.chat-group.other .chat-group-messages {
+  max-width: min(680px, 100%);
+}
+
+.chat-group.other .chat-bubble {
+  background: color-mix(in srgb, var(--accent) 5%, var(--card));
+  border-color: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  font-size: 0.88rem;
+}
+
+.chat-group.other .chat-bubble:hover {
+  background: color-mix(in srgb, var(--accent) 8%, var(--card));
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.chat-group.other .chat-sender-name {
+  color: var(--accent);
+  opacity: 0.7;
+}
+
+.chat-group.other .chat-text strong {
+  color: var(--accent);
+}
+
+.chat-group.other .chat-text code {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--accent);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.85em;
+}

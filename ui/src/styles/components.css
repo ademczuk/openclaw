@@ -462,15 +462,14 @@
   padding: 0;
   cursor: pointer;
   flex-shrink: 0;
-  background:
-    conic-gradient(
-      from 210deg at 50% 50%,
-      var(--sw-bg) 0deg,
-      var(--sw-sidebar) 90deg,
-      var(--sw-accent) 180deg,
-      var(--sw-glow) 270deg,
-      var(--sw-bg) 360deg
-    );
+  background: conic-gradient(
+    from 210deg at 50% 50%,
+    var(--sw-bg) 0deg,
+    var(--sw-sidebar) 90deg,
+    var(--sw-accent) 180deg,
+    var(--sw-glow) 270deg,
+    var(--sw-bg) 360deg
+  );
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.06),
     0 1px 3px rgba(0, 0, 0, 0.3);
@@ -485,11 +484,7 @@
   position: absolute;
   inset: 2px;
   border-radius: var(--radius-full);
-  background: radial-gradient(
-    circle at 35% 35%,
-    rgba(255, 255, 255, 0.12) 0%,
-    transparent 60%
-  );
+  background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.12) 0%, transparent 60%);
   pointer-events: none;
   transition: opacity var(--clay-duration-fast) var(--clay-easing);
 }
@@ -1093,6 +1088,61 @@
 .list-meta .field textarea,
 .list-meta .field select {
   width: 100%;
+}
+
+/* ===========================================
+   Cron Status Strip - compact scheduler status bar
+   =========================================== */
+
+.cron-status-strip {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 1px 0 var(--card-highlight);
+  flex-wrap: wrap;
+  animation: rise 0.35s var(--ease-out) backwards;
+}
+
+.cron-status-strip__item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.cron-status-strip__label {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.cron-status-strip__value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.cron-status-strip__sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.cron-status-strip > .btn {
+  margin-left: auto;
+}
+
+/* Cron new job form - compact textarea */
+.cron-new-job .field textarea {
+  min-height: 72px;
 }
 
 /* Cron jobs: allow long payload/state text and keep action buttons inside the card. */
@@ -3632,7 +3682,7 @@
 
 .ov-bottom-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 14px;
 }
 

@@ -157,16 +157,16 @@ export function renderApp(state: AppViewState) {
   return html`
     ${renderCommandPalette({
       open: state.paletteOpen,
-      query: (state as unknown as { paletteQuery?: string }).paletteQuery ?? "",
-      activeIndex: (state as unknown as { paletteActiveIndex?: number }).paletteActiveIndex ?? 0,
+      query: state.paletteQuery,
+      activeIndex: state.paletteActiveIndex,
       onToggle: () => {
         state.paletteOpen = !state.paletteOpen;
       },
       onQueryChange: (q) => {
-        (state as unknown as { paletteQuery: string }).paletteQuery = q;
+        state.paletteQuery = q;
       },
       onActiveIndexChange: (i) => {
-        (state as unknown as { paletteActiveIndex: number }).paletteActiveIndex = i;
+        state.paletteActiveIndex = i;
       },
       onNavigate: (tab) => {
         state.setTab(tab as import("./navigation.ts").Tab);

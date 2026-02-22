@@ -188,11 +188,15 @@ export async function handleSendChat(
   // Intercept local slash commands (/status, /model, /compact, etc.)
   const parsed = parseSlashCommand(message);
   if (parsed?.command.executeLocal) {
+    const prevDraft = messageOverride == null ? previousDraft : undefined;
     if (messageOverride == null) {
       host.chatMessage = "";
       host.chatAttachments = [];
     }
-    await dispatchSlashCommand(host, parsed.command.name, parsed.args);
+    await dispatchSlashCommand(host, parsed.command.name, parsed.args, {
+      previousDraft: prevDraft,
+      restoreDraft: Boolean(messageOverride && opts?.restoreDraft),
+    });
     return;
   }
 
@@ -219,16 +223,29 @@ export async function handleSendChat(
 
 // ── Slash Command Dispatch ──
 
-async function dispatchSlashCommand(host: ChatHost, name: string, args: string) {
+async function dispatchSlashCommand(
+  host: ChatHost,
+  name: string,
+  args: string,
+  sendOpts?: { previousDraft?: string; restoreDraft?: boolean },
+) {
   switch (name) {
     case "stop":
       await handleAbortChat(host);
       return;
     case "new":
-      await sendChatMessageNow(host, "/new", { refreshSessions: true });
+      await sendChatMessageNow(host, "/new", {
+        refreshSessions: true,
+        previousDraft: sendOpts?.previousDraft,
+        restoreDraft: sendOpts?.restoreDraft,
+      });
       return;
     case "reset":
-      await sendChatMessageNow(host, "/reset", { refreshSessions: true });
+      await sendChatMessageNow(host, "/reset", {
+        refreshSessions: true,
+        previousDraft: sendOpts?.previousDraft,
+        restoreDraft: sendOpts?.restoreDraft,
+      });
       return;
     case "clear":
       host.chatMessages = [];

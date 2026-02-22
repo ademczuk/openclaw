@@ -65,37 +65,32 @@ export function renderCron(props: CronProps) {
   const selectedDeliveryMode =
     props.form.deliveryMode === "announce" && !supportsAnnounce ? "none" : props.form.deliveryMode;
   return html`
-    <section class="grid grid-cols-2">
-      <div class="card">
-        <div class="card-title">Scheduler</div>
-        <div class="card-sub">Gateway-owned cron scheduler status.</div>
-        <div class="stat-grid" style="margin-top: 16px;">
-          <div class="stat">
-            <div class="stat-label">Enabled</div>
-            <div class="stat-value">
-              ${props.status ? (props.status.enabled ? "Yes" : "No") : "n/a"}
-            </div>
-          </div>
-          <div class="stat">
-            <div class="stat-label">Jobs</div>
-            <div class="stat-value">${props.status?.jobs ?? "n/a"}</div>
-          </div>
-          <div class="stat">
-            <div class="stat-label">Next wake</div>
-            <div class="stat-value stat-value--sm">${formatNextRun(props.status?.nextWakeAtMs ?? null)}</div>
-          </div>
-        </div>
-        <div class="row" style="margin-top: 12px;">
-          <button class="btn" ?disabled=${props.loading} @click=${props.onRefresh}>
-            ${props.loading ? "Refreshing…" : "Refresh"}
-          </button>
-          ${props.error ? html`<span class="muted">${props.error}</span>` : nothing}
-        </div>
+    <div class="cron-status-strip">
+      <div class="cron-status-strip__item">
+        <span class="cron-status-strip__label">Enabled</span>
+        <span class="cron-status-strip__value">
+          ${props.status ? (props.status.enabled ? "Yes" : "No") : "n/a"}
+        </span>
       </div>
+      <span class="cron-status-strip__sep"></span>
+      <div class="cron-status-strip__item">
+        <span class="cron-status-strip__label">Jobs</span>
+        <span class="cron-status-strip__value">${props.status?.jobs ?? "n/a"}</span>
+      </div>
+      <span class="cron-status-strip__sep"></span>
+      <div class="cron-status-strip__item">
+        <span class="cron-status-strip__label">Next wake</span>
+        <span class="cron-status-strip__value">${formatNextRun(props.status?.nextWakeAtMs ?? null)}</span>
+      </div>
+      <button class="btn btn--sm" ?disabled=${props.loading} @click=${props.onRefresh}>
+        ${props.loading ? "Refreshing…" : "Refresh"}
+      </button>
+      ${props.error ? html`<span class="muted" style="font-size: 12px">${props.error}</span>` : nothing}
+    </div>
 
-      <div class="card">
-        <div class="card-title">New Job</div>
-        <div class="card-sub">Create a scheduled wakeup or agent run.</div>
+    <section class="card cron-new-job">
+      <div class="card-title">New Job</div>
+      <div class="card-sub">Create a scheduled wakeup or agent run.</div>
         <div class="form-grid" style="margin-top: 16px;">
           <label class="field">
             <span>Name</span>
@@ -131,24 +126,9 @@ export function renderCron(props: CronProps) {
                 props.onFormChange({ enabled: (e.target as HTMLInputElement).checked })}
             />
           </label>
-          <label class="field">
-            <span>Schedule</span>
-            <select
-              .value=${props.form.scheduleKind}
-              @change=${(e: Event) =>
-                props.onFormChange({
-                  scheduleKind: (e.target as HTMLSelectElement)
-                    .value as CronFormState["scheduleKind"],
-                })}
-            >
-              <option value="every">Every</option>
-              <option value="at">At</option>
-              <option value="cron">Cron</option>
-            </select>
-          </label>
         </div>
         ${renderScheduleFields(props)}
-        <div class="form-grid" style="margin-top: 12px;">
+        <div class="form-grid" style="margin-top: 10px;">
           <label class="field">
             <span>Session</span>
             <select
@@ -191,7 +171,7 @@ export function renderCron(props: CronProps) {
             </select>
           </label>
         </div>
-        <label class="field" style="margin-top: 12px;">
+        <label class="field" style="margin-top: 10px;">
           <span>${props.form.payloadKind === "systemEvent" ? "System text" : "Agent message"}</span>
           <textarea
             .value=${props.form.payloadText}
@@ -199,10 +179,10 @@ export function renderCron(props: CronProps) {
               props.onFormChange({
                 payloadText: (e.target as HTMLTextAreaElement).value,
               })}
-            rows="4"
+            rows="3"
           ></textarea>
         </label>
-        <div class="form-grid" style="margin-top: 12px;">
+        <div class="form-grid" style="margin-top: 10px;">
           <label class="field">
             <span>Delivery</span>
             <select
@@ -296,12 +276,11 @@ export function renderCron(props: CronProps) {
               : nothing
           }
         </div>
-        <div class="row" style="margin-top: 14px;">
+        <div class="row" style="margin-top: 12px; justify-content: flex-end;">
           <button class="btn primary" ?disabled=${props.busy} @click=${props.onAdd}>
             ${props.busy ? "Saving…" : "Add job"}
           </button>
         </div>
-      </div>
     </section>
 
     <section class="card" style="margin-top: 18px;">
@@ -342,26 +321,49 @@ export function renderCron(props: CronProps) {
   `;
 }
 
+function renderScheduleKindSelect(props: CronProps) {
+  return html`
+    <label class="field">
+      <span>Schedule</span>
+      <select
+        .value=${props.form.scheduleKind}
+        @change=${(e: Event) =>
+          props.onFormChange({
+            scheduleKind: (e.target as HTMLSelectElement).value as CronFormState["scheduleKind"],
+          })}
+      >
+        <option value="every">Every</option>
+        <option value="at">At</option>
+        <option value="cron">Cron</option>
+      </select>
+    </label>
+  `;
+}
+
 function renderScheduleFields(props: CronProps) {
   const form = props.form;
   if (form.scheduleKind === "at") {
     return html`
-      <label class="field" style="margin-top: 12px;">
-        <span>Run at</span>
-        <input
-          type="datetime-local"
-          .value=${form.scheduleAt}
-          @input=${(e: Event) =>
-            props.onFormChange({
-              scheduleAt: (e.target as HTMLInputElement).value,
-            })}
-        />
-      </label>
+      <div class="form-grid" style="margin-top: 10px;">
+        ${renderScheduleKindSelect(props)}
+        <label class="field">
+          <span>Run at</span>
+          <input
+            type="datetime-local"
+            .value=${form.scheduleAt}
+            @input=${(e: Event) =>
+              props.onFormChange({
+                scheduleAt: (e.target as HTMLInputElement).value,
+              })}
+          />
+        </label>
+      </div>
     `;
   }
   if (form.scheduleKind === "every") {
     return html`
-      <div class="form-grid" style="margin-top: 12px;">
+      <div class="form-grid" style="margin-top: 10px;">
+        ${renderScheduleKindSelect(props)}
         <label class="field">
           <span>Every</span>
           <input
@@ -390,7 +392,8 @@ function renderScheduleFields(props: CronProps) {
     `;
   }
   return html`
-    <div class="form-grid" style="margin-top: 12px;">
+    <div class="form-grid" style="margin-top: 10px;">
+      ${renderScheduleKindSelect(props)}
       <label class="field">
         <span>Expression</span>
         <input

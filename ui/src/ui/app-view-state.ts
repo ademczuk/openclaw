@@ -238,6 +238,8 @@ export type AppViewState = {
   // Overview dashboard state
   attentionItems: AttentionItem[];
   paletteOpen: boolean;
+  paletteQuery: string;
+  paletteActiveIndex: number;
   streamMode: boolean;
   overviewLogLines: string[];
   overviewLogCursor: number;

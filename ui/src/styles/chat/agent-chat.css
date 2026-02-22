@@ -498,7 +498,6 @@
 }
 
 @keyframes cursor-blink {
-
   0%,
   100% {
     opacity: 1;
@@ -510,7 +509,6 @@
 }
 
 @keyframes chat-pulse {
-
   0%,
   100% {
     opacity: 1;
@@ -554,7 +552,7 @@
 
 /* Textarea — full width, borderless inside the container */
 
-.agent-chat__input>textarea {
+.agent-chat__input > textarea {
   width: 100%;
   min-height: 52px;
   max-height: 150px;
@@ -570,7 +568,7 @@
   box-sizing: border-box;
 }
 
-.agent-chat__input>textarea::placeholder {
+.agent-chat__input > textarea::placeholder {
   color: var(--muted);
 }
 
@@ -632,6 +630,29 @@
 .agent-chat__input-btn--active {
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* Recording mic pulse */
+.agent-chat__input-btn--recording {
+  color: var(--danger, #e53e3e);
+  background: color-mix(in srgb, var(--danger, #e53e3e) 12%, transparent);
+  animation: mic-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes mic-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* STT interim transcript preview */
+.agent-chat__stt-interim {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-style: italic;
+  padding: 4px 12px 0;
+  white-space: pre-wrap;
+  max-height: 3em;
+  overflow-y: auto;
 }
 
 .agent-chat__toolbar .btn-ghost {
@@ -864,7 +885,7 @@
   bottom: 100%;
   left: 0;
   right: 0;
-  max-height: 320px;
+  max-height: 360px;
   overflow-y: auto;
   background: var(--popover);
   border: 1px solid var(--border-strong);
@@ -874,9 +895,21 @@
   margin-bottom: 4px;
   padding: 6px;
   scrollbar-width: thin;
+  animation: slash-menu-enter 120ms ease-out;
 }
 
-.slash-menu-group+.slash-menu-group {
+@keyframes slash-menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slash-menu-group + .slash-menu-group {
   margin-top: 4px;
   padding-top: 4px;
   border-top: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
@@ -960,12 +993,53 @@
   white-space: nowrap;
 }
 
+.slash-menu-badge {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
 .slash-menu-item--active .slash-menu-name {
   color: var(--accent-hover);
 }
 
 .slash-menu-item--active .slash-menu-desc {
   color: var(--text);
+}
+
+.slash-menu-item--active .slash-menu-badge {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.slash-menu-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px 4px;
+  margin-top: 4px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  font-size: 0.65rem;
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.slash-menu-footer kbd {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: 3px;
+  padding: 0 3px;
+  line-height: 1.5;
+  margin-right: 2px;
 }
 
 /* ─── Attachment Previews ─── */

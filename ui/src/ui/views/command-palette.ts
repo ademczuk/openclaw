@@ -1,4 +1,5 @@
 import { html, nothing } from "lit";
+import { ref } from "lit/directives/ref.js";
 import { t } from "../../i18n/index.ts";
 import { icons, type IconName } from "../icons.ts";
 
@@ -195,6 +196,12 @@ const CATEGORY_LABELS: Record<string, string> = {
   skills: "Skills",
 };
 
+function focusInput(el: Element | undefined) {
+  if (el) {
+    requestAnimationFrame(() => (el as HTMLInputElement).focus());
+  }
+}
+
 export function renderCommandPalette(props: CommandPaletteProps) {
   if (!props.open) {
     return nothing;
@@ -205,8 +212,13 @@ export function renderCommandPalette(props: CommandPaletteProps) {
 
   return html`
     <div class="cmd-palette-overlay" @click=${() => props.onToggle()}>
-      <div class="cmd-palette" @click=${(e: Event) => e.stopPropagation()}>
+      <div
+        class="cmd-palette"
+        @click=${(e: Event) => e.stopPropagation()}
+        @keydown=${(e: KeyboardEvent) => handleKeydown(e, props)}
+      >
         <input
+          ${ref(focusInput)}
           class="cmd-palette__input"
           placeholder="${t("overview.palette.placeholder")}"
           .value=${props.query}
@@ -214,8 +226,6 @@ export function renderCommandPalette(props: CommandPaletteProps) {
             props.onQueryChange((e.target as HTMLInputElement).value);
             props.onActiveIndexChange(0);
           }}
-          @keydown=${(e: KeyboardEvent) => handleKeydown(e, props)}
-          autofocus
         />
         <div class="cmd-palette__results">
           ${
@@ -230,7 +240,10 @@ export function renderCommandPalette(props: CommandPaletteProps) {
                   return html`
                     <div
                       class="cmd-palette__item ${isActive ? "cmd-palette__item--active" : ""}"
-                      @click=${() => selectItem(item, props)}
+                      @click=${(e: Event) => {
+                        e.stopPropagation();
+                        selectItem(item, props);
+                      }}
                       @mouseenter=${() => props.onActiveIndexChange(globalIndex)}
                     >
                       <span class="nav-item__icon">${icons[item.icon]}</span>

@@ -12,10 +12,12 @@ import { normalizeMessage, normalizeRoleForGrouping } from "../chat/message-norm
 import { PinnedMessages } from "../chat/pinned-messages.ts";
 import {
   CATEGORY_LABELS,
+  SLASH_COMMANDS,
   getSlashCommandCompletions,
   type SlashCommandCategory,
   type SlashCommandDef,
 } from "../chat/slash-commands.ts";
+import { isSttSupported, startStt, stopStt } from "../chat/speech.ts";
 import { icons } from "../icons.ts";
 import { detectTextDirection } from "../text-direction.ts";
 import type { GatewaySessionRow, SessionsListResult } from "../types.ts";
@@ -133,9 +135,14 @@ function getDeletedMessages(sessionKey: string): DeletedMessages {
 }
 
 // Module-level ephemeral UI state (reset on navigation away)
+let sttRecording = false;
+let sttInterimText = "";
 let slashMenuOpen = false;
 let slashMenuItems: SlashCommandDef[] = [];
 let slashMenuIndex = 0;
+let slashMenuMode: "command" | "args" = "command";
+let slashMenuCommand: SlashCommandDef | null = null;
+let slashMenuArgItems: string[] = [];
 let searchOpen = false;
 let searchQuery = "";
 let pinnedExpanded = false;
@@ -374,16 +381,54 @@ function renderAttachmentPreview(props: ChatProps): TemplateResult | typeof noth
   `;
 }
 
+function resetSlashMenuState(): void {
+  slashMenuMode = "command";
+  slashMenuCommand = null;
+  slashMenuArgItems = [];
+  slashMenuItems = [];
+}
+
 function updateSlashMenu(value: string, requestUpdate: () => void): void {
+  // Arg mode: /command <partial-arg>
+  const argMatch = value.match(/^\/(\S+)\s(.*)$/);
+  if (argMatch) {
+    const cmdName = argMatch[1].toLowerCase();
+    const argFilter = argMatch[2].toLowerCase();
+    const cmd = SLASH_COMMANDS.find((c) => c.name === cmdName);
+    if (cmd?.argOptions?.length) {
+      const filtered = argFilter
+        ? cmd.argOptions.filter((opt) => opt.toLowerCase().startsWith(argFilter))
+        : cmd.argOptions;
+      if (filtered.length > 0) {
+        slashMenuMode = "args";
+        slashMenuCommand = cmd;
+        slashMenuArgItems = filtered;
+        slashMenuOpen = true;
+        slashMenuIndex = 0;
+        slashMenuItems = [];
+        requestUpdate();
+        return;
+      }
+    }
+    slashMenuOpen = false;
+    resetSlashMenuState();
+    requestUpdate();
+    return;
+  }
+
+  // Command mode: /partial-command
   const match = value.match(/^\/(\S*)$/);
   if (match) {
     const items = getSlashCommandCompletions(match[1]);
     slashMenuItems = items;
     slashMenuOpen = items.length > 0;
     slashMenuIndex = 0;
+    slashMenuMode = "command";
+    slashMenuCommand = null;
+    slashMenuArgItems = [];
   } else {
     slashMenuOpen = false;
-    slashMenuItems = [];
+    resetSlashMenuState();
   }
   requestUpdate();
 }
@@ -393,18 +438,69 @@ function selectSlashCommand(
   props: ChatProps,
   requestUpdate: () => void,
 ): void {
+  // Transition to arg picker when the command has fixed options
+  if (cmd.argOptions?.length) {
+    props.onDraftChange(`/${cmd.name} `);
+    slashMenuMode = "args";
+    slashMenuCommand = cmd;
+    slashMenuArgItems = cmd.argOptions;
+    slashMenuOpen = true;
+    slashMenuIndex = 0;
+    slashMenuItems = [];
+    requestUpdate();
+    return;
+  }
+
   slashMenuOpen = false;
-  slashMenuItems = [];
+  resetSlashMenuState();
 
   if (cmd.executeLocal && !cmd.args) {
-    // No-arg local commands: execute immediately via send flow
     props.onDraftChange(`/${cmd.name}`);
     requestUpdate();
     props.onSend();
   } else {
-    // Commands needing args: insert and let user type arguments
     props.onDraftChange(`/${cmd.name} `);
     requestUpdate();
+  }
+}
+
+function tabCompleteSlashCommand(
+  cmd: SlashCommandDef,
+  props: ChatProps,
+  requestUpdate: () => void,
+): void {
+  // Tab: fill in the command text without executing
+  if (cmd.argOptions?.length) {
+    props.onDraftChange(`/${cmd.name} `);
+    slashMenuMode = "args";
+    slashMenuCommand = cmd;
+    slashMenuArgItems = cmd.argOptions;
+    slashMenuOpen = true;
+    slashMenuIndex = 0;
+    slashMenuItems = [];
+    requestUpdate();
+    return;
+  }
+
+  slashMenuOpen = false;
+  resetSlashMenuState();
+  props.onDraftChange(cmd.args ? `/${cmd.name} ` : `/${cmd.name}`);
+  requestUpdate();
+}
+
+function selectSlashArg(
+  arg: string,
+  props: ChatProps,
+  requestUpdate: () => void,
+  execute: boolean,
+): void {
+  const cmdName = slashMenuCommand?.name ?? "";
+  slashMenuOpen = false;
+  resetSlashMenuState();
+  props.onDraftChange(`/${cmdName} ${arg}`);
+  requestUpdate();
+  if (execute) {
+    props.onSend();
   }
 }
 
@@ -568,7 +664,45 @@ function renderSlashMenu(
   requestUpdate: () => void,
   props: ChatProps,
 ): TemplateResult | typeof nothing {
-  if (!slashMenuOpen || slashMenuItems.length === 0) {
+  if (!slashMenuOpen) {
+    return nothing;
+  }
+
+  // Arg-picker mode: show options for the selected command
+  if (slashMenuMode === "args" && slashMenuCommand && slashMenuArgItems.length > 0) {
+    return html`
+      <div class="slash-menu">
+        <div class="slash-menu-group">
+          <div class="slash-menu-group__label">/${slashMenuCommand.name} ${slashMenuCommand.description}</div>
+          ${slashMenuArgItems.map(
+            (arg, i) => html`
+              <div
+                class="slash-menu-item ${i === slashMenuIndex ? "slash-menu-item--active" : ""}"
+                @click=${() => selectSlashArg(arg, props, requestUpdate, true)}
+                @mouseenter=${() => {
+                  slashMenuIndex = i;
+                  requestUpdate();
+                }}
+              >
+                ${slashMenuCommand?.icon ? html`<span class="slash-menu-icon">${icons[slashMenuCommand.icon]}</span>` : nothing}
+                <span class="slash-menu-name">${arg}</span>
+                <span class="slash-menu-desc">/${slashMenuCommand?.name} ${arg}</span>
+              </div>
+            `,
+          )}
+        </div>
+        <div class="slash-menu-footer">
+          <kbd>↑↓</kbd> navigate
+          <kbd>Tab</kbd> fill
+          <kbd>Enter</kbd> run
+          <kbd>Esc</kbd> close
+        </div>
+      </div>
+    `;
+  }
+
+  // Command mode: show grouped commands
+  if (slashMenuItems.length === 0) {
     return nothing;
   }
 
@@ -607,11 +741,13 @@ function renderSlashMenu(
               ${cmd.args ? html`<span class="slash-menu-args">${cmd.args}</span>` : nothing}
               <span class="slash-menu-desc">${cmd.description}</span>
               ${
-                cmd.executeLocal && !cmd.args
-                  ? html`
-                      <span class="slash-menu-badge">instant</span>
-                    `
-                  : nothing
+                cmd.argOptions?.length
+                  ? html`<span class="slash-menu-badge">${cmd.argOptions.length} options</span>`
+                  : cmd.executeLocal && !cmd.args
+                    ? html`
+                        <span class="slash-menu-badge">instant</span>
+                      `
+                    : nothing
               }
             </div>
           `,
@@ -625,7 +761,8 @@ function renderSlashMenu(
       ${sections}
       <div class="slash-menu-footer">
         <kbd>↑↓</kbd> navigate
-        <kbd>Tab</kbd> select
+        <kbd>Tab</kbd> fill
+        <kbd>Enter</kbd> select
         <kbd>Esc</kbd> close
       </div>
     </div>
@@ -758,7 +895,38 @@ export function renderChat(props: ChatProps) {
   `;
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    // Slash menu navigation
+    // Slash menu navigation — arg mode
+    if (slashMenuOpen && slashMenuMode === "args" && slashMenuArgItems.length > 0) {
+      const len = slashMenuArgItems.length;
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          slashMenuIndex = (slashMenuIndex + 1) % len;
+          requestUpdate();
+          return;
+        case "ArrowUp":
+          e.preventDefault();
+          slashMenuIndex = (slashMenuIndex - 1 + len) % len;
+          requestUpdate();
+          return;
+        case "Tab":
+          e.preventDefault();
+          selectSlashArg(slashMenuArgItems[slashMenuIndex], props, requestUpdate, false);
+          return;
+        case "Enter":
+          e.preventDefault();
+          selectSlashArg(slashMenuArgItems[slashMenuIndex], props, requestUpdate, true);
+          return;
+        case "Escape":
+          e.preventDefault();
+          slashMenuOpen = false;
+          resetSlashMenuState();
+          requestUpdate();
+          return;
+      }
+    }
+
+    // Slash menu navigation — command mode
     if (slashMenuOpen && slashMenuItems.length > 0) {
       const len = slashMenuItems.length;
       switch (e.key) {
@@ -772,14 +940,18 @@ export function renderChat(props: ChatProps) {
           slashMenuIndex = (slashMenuIndex - 1 + len) % len;
           requestUpdate();
           return;
-        case "Enter":
         case "Tab":
+          e.preventDefault();
+          tabCompleteSlashCommand(slashMenuItems[slashMenuIndex], props, requestUpdate);
+          return;
+        case "Enter":
           e.preventDefault();
           selectSlashCommand(slashMenuItems[slashMenuIndex], props, requestUpdate);
           return;
         case "Escape":
           e.preventDefault();
           slashMenuOpen = false;
+          resetSlashMenuState();
           requestUpdate();
           return;
       }
@@ -967,6 +1139,8 @@ export function renderChat(props: ChatProps) {
           @change=${(e: Event) => handleFileSelect(e, props)}
         />
 
+        ${sttRecording && sttInterimText ? html`<div class="agent-chat__stt-interim">${sttInterimText}</div>` : nothing}
+
         <textarea
           ${ref((el) => el && adjustTextareaHeight(el as HTMLTextAreaElement))}
           .value=${props.draft}
@@ -975,7 +1149,7 @@ export function renderChat(props: ChatProps) {
           @keydown=${handleKeyDown}
           @input=${handleInput}
           @paste=${(e: ClipboardEvent) => handlePaste(e, props)}
-          placeholder=${placeholder}
+          placeholder=${sttRecording ? "Listening..." : placeholder}
           rows="1"
         ></textarea>
 
@@ -992,7 +1166,59 @@ export function renderChat(props: ChatProps) {
               ${icons.paperclip}
             </button>
 
-            ${nothing /* mic hidden for now */}
+            ${
+              isSttSupported()
+                ? html`
+                  <button
+                    class="agent-chat__input-btn ${sttRecording ? "agent-chat__input-btn--recording" : ""}"
+                    @click=${() => {
+                      if (sttRecording) {
+                        stopStt();
+                        sttRecording = false;
+                        sttInterimText = "";
+                        requestUpdate();
+                      } else {
+                        const started = startStt({
+                          onTranscript: (text, isFinal) => {
+                            if (isFinal) {
+                              const current = props.draft;
+                              const sep = current && !current.endsWith(" ") ? " " : "";
+                              props.onDraftChange(current + sep + text);
+                              sttInterimText = "";
+                            } else {
+                              sttInterimText = text;
+                            }
+                            requestUpdate();
+                          },
+                          onStart: () => {
+                            sttRecording = true;
+                            requestUpdate();
+                          },
+                          onEnd: () => {
+                            sttRecording = false;
+                            sttInterimText = "";
+                            requestUpdate();
+                          },
+                          onError: () => {
+                            sttRecording = false;
+                            sttInterimText = "";
+                            requestUpdate();
+                          },
+                        });
+                        if (started) {
+                          sttRecording = true;
+                          requestUpdate();
+                        }
+                      }
+                    }}
+                    title=${sttRecording ? "Stop recording" : "Voice input"}
+                    ?disabled=${!props.connected}
+                  >
+                    ${sttRecording ? icons.micOff : icons.mic}
+                  </button>
+                `
+                : nothing
+            }
 
             ${tokens ? html`<span class="agent-chat__token-count">${tokens}</span>` : nothing}
           </div>

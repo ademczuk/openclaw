@@ -13,6 +13,7 @@ import {
   formatReasoningMarkdown,
 } from "./message-extract.ts";
 import { isToolResultMessage, normalizeRoleForGrouping } from "./message-normalizer.ts";
+import { isTtsSupported, speakText, stopTts, isTtsSpeaking } from "./speech.ts";
 import { extractToolCards, renderToolCardSidebar } from "./tool-cards.ts";
 
 type ImageBlock = {
@@ -162,6 +163,7 @@ export function renderMessageGroup(
           <span class="chat-sender-name">${who}</span>
           <span class="chat-group-timestamp">${timestamp}</span>
           ${renderMessageMeta(meta)}
+          ${normalizedRole === "assistant" && isTtsSupported() ? renderTtsButton(group) : nothing}
           ${
             opts.onDelete
               ? html`<button
@@ -294,6 +296,59 @@ function renderMessageMeta(meta: GroupMeta | null) {
   }
 
   return html`<span class="msg-meta">${parts}</span>`;
+}
+
+function extractGroupText(group: MessageGroup): string {
+  const parts: string[] = [];
+  for (const { message } of group.messages) {
+    const text = extractTextCached(message);
+    if (text?.trim()) {
+      parts.push(text.trim());
+    }
+  }
+  return parts.join("\n\n");
+}
+
+function renderTtsButton(group: MessageGroup) {
+  return html`
+    <button
+      class="chat-tts-btn"
+      type="button"
+      title=${isTtsSpeaking() ? "Stop speaking" : "Read aloud"}
+      aria-label=${isTtsSpeaking() ? "Stop speaking" : "Read aloud"}
+      @click=${(e: Event) => {
+        const btn = e.currentTarget as HTMLButtonElement;
+        if (isTtsSpeaking()) {
+          stopTts();
+          btn.classList.remove("chat-tts-btn--active");
+          btn.title = "Read aloud";
+          return;
+        }
+        const text = extractGroupText(group);
+        if (!text) {
+          return;
+        }
+        btn.classList.add("chat-tts-btn--active");
+        btn.title = "Stop speaking";
+        speakText(text, {
+          onEnd: () => {
+            if (btn.isConnected) {
+              btn.classList.remove("chat-tts-btn--active");
+              btn.title = "Read aloud";
+            }
+          },
+          onError: () => {
+            if (btn.isConnected) {
+              btn.classList.remove("chat-tts-btn--active");
+              btn.title = "Read aloud";
+            }
+          },
+        });
+      }}
+    >
+      ${icons.volume2}
+    </button>
+  `;
 }
 
 function renderAvatar(
