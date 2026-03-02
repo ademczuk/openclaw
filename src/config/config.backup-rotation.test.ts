@@ -71,9 +71,11 @@ describe("config backup rotation", () => {
       const bakStat = await fs.stat(`${configPath}.bak`);
       const bak1Stat = await fs.stat(`${configPath}.bak.1`);
 
-      // Owner-only permissions (0o600)
-      expect(bakStat.mode & 0o777).toBe(0o600);
-      expect(bak1Stat.mode & 0o777).toBe(0o600);
+      // Owner-only permissions (0o600) — Windows does not support Unix chmod
+      if (process.platform !== "win32") {
+        expect(bakStat.mode & 0o777).toBe(0o600);
+        expect(bak1Stat.mode & 0o777).toBe(0o600);
+      }
     });
   });
 
