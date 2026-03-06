@@ -57,6 +57,7 @@ function startDefaultMonitor(
     checkIntervalMs: DEFAULT_CHECK_INTERVAL_MS,
     startupGraceMs: 0,
     ...overrides,
+    timing: { restartDrainMs: 0, ...overrides.timing },
   });
 }
 
@@ -514,6 +515,63 @@ describe("channel-health-monitor", () => {
       expect(manager.stopChannel).toHaveBeenCalledWith("slack", "default");
       expect(manager.startChannel).toHaveBeenCalledWith("slack", "default");
       monitor.stop();
+    });
+  });
+
+  describe("restart drain delay", () => {
+    it("waits restartDrainMs between stop and start", async () => {
+      const now = Date.now();
+      const manager = createSnapshotManager({
+        whatsapp: {
+          default: {
+            running: true,
+            connected: false,
+            enabled: true,
+            configured: true,
+            linked: true,
+            lastStartAt: now - 300_000,
+          },
+        },
+      });
+      const drainMs = 3_000;
+      const monitor = startDefaultMonitor(manager, {
+        timing: { restartDrainMs: drainMs },
+      });
+      // Advance past startup grace + first check interval
+      await vi.advanceTimersByTimeAsync(DEFAULT_CHECK_INTERVAL_MS + 1);
+      expect(manager.stopChannel).toHaveBeenCalledWith("whatsapp", "default");
+      // Start not yet called — drain is pending
+      expect(manager.startChannel).not.toHaveBeenCalled();
+      // Advance past drain
+      await vi.advanceTimersByTimeAsync(drainMs + 1);
+      expect(manager.startChannel).toHaveBeenCalledWith("whatsapp", "default");
+      monitor.stop();
+    });
+
+    it("skips startChannel if monitor stopped during drain", async () => {
+      const now = Date.now();
+      const manager = createSnapshotManager({
+        whatsapp: {
+          default: {
+            running: true,
+            connected: false,
+            enabled: true,
+            configured: true,
+            linked: true,
+            lastStartAt: now - 300_000,
+          },
+        },
+      });
+      const drainMs = 3_000;
+      const monitor = startDefaultMonitor(manager, {
+        timing: { restartDrainMs: drainMs },
+      });
+      await vi.advanceTimersByTimeAsync(DEFAULT_CHECK_INTERVAL_MS + 1);
+      expect(manager.stopChannel).toHaveBeenCalled();
+      // Stop monitor during drain window
+      monitor.stop();
+      await vi.advanceTimersByTimeAsync(drainMs + 1);
+      expect(manager.startChannel).not.toHaveBeenCalled();
     });
   });
 });

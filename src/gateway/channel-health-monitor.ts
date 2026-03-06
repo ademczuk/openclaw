@@ -18,15 +18,20 @@ const DEFAULT_MAX_RESTARTS_PER_HOUR = 10;
 const ONE_HOUR_MS = 60 * 60_000;
 
 /**
- * How long a connected channel can go without receiving any event before
- * the health monitor treats it as a "stale socket" and triggers a restart.
- * This catches the half-dead WebSocket scenario where the connection appears
- * alive (health checks pass) but Slack silently stops delivering events.
+ * After stopping a channel, wait this long before starting a new instance.
+ * For well-behaved channels (e.g. Telegram via grammY), stopChannel() already
+ * awaits full shutdown including the final offset-sync getUpdates that releases
+ * the server-side polling lock.  This drain is a defensive buffer for edge
+ * cases: plugin channels whose stop doesn't fully await cleanup, or network
+ * errors during shutdown that prevent proper session release.
  */
+const DEFAULT_RESTART_DRAIN_MS = 5_000;
+
 export type ChannelHealthTimingPolicy = {
   monitorStartupGraceMs: number;
   channelConnectGraceMs: number;
   staleEventThresholdMs: number;
+  restartDrainMs: number;
 };
 
 export type ChannelHealthMonitorDeps = {
@@ -70,6 +75,7 @@ function resolveTimingPolicy(
       deps.timing?.staleEventThresholdMs ??
       deps.staleEventThresholdMs ??
       DEFAULT_CHANNEL_STALE_EVENT_THRESHOLD_MS,
+    restartDrainMs: deps.timing?.restartDrainMs ?? DEFAULT_RESTART_DRAIN_MS,
   };
 }
 
@@ -103,7 +109,7 @@ export function startChannelHealthMonitor(deps: ChannelHealthMonitorDeps): Chann
     checkInFlight = true;
 
     try {
-      const now = Date.now();
+      let now = Date.now();
       if (now - startedAt < timing.monitorStartupGraceMs) {
         return;
       }
@@ -156,6 +162,18 @@ export function startChannelHealthMonitor(deps: ChannelHealthMonitorDeps): Chann
           try {
             if (status.running) {
               await channelManager.stopChannel(channelId as ChannelId, accountId);
+              if (timing.restartDrainMs > 0) {
+                await new Promise((resolve) => {
+                  const t = setTimeout(resolve, timing.restartDrainMs);
+                  if (typeof t === "object" && "unref" in t) {
+                    t.unref();
+                  }
+                });
+              }
+              if (stopped) {
+                return;
+              }
+              now = Date.now();
             }
             channelManager.resetRestartAttempts(channelId as ChannelId, accountId);
             await channelManager.startChannel(channelId as ChannelId, accountId);
