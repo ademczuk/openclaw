@@ -295,6 +295,7 @@ Docs: https://docs.openclaw.ai
 - Gateway/webchat route safety: block webchat/control-ui clients from inheriting stored external delivery routes on channel-scoped sessions (while preserving route inheritance for UI/TUI clients), preventing cross-channel leakage from scoped chats. (#39175) Thanks @widingmarcus-cyber.
 - Telegram error-surface resilience: return a user-visible fallback reply when dispatch/debounce processing fails instead of going silent, while preserving draft-stream cleanup and best-effort thread-scoped fallback delivery. (#39209) Thanks @riftzen-bit.
 - Gateway/password auth startup diagnostics: detect unresolved provider-reference objects in `gateway.auth.password` and fail with a specific bootstrap-secrets error message instead of generic misconfiguration output. (#39230) Thanks @ademczuk.
+- Install/Windows PowerShell: keep the installer window open on failure so users can read error messages, check `$LASTEXITCODE` after native commands (`npm`, `git`, `pnpm`) to detect silent failures, rename `$ERROR` to `$CLR_ERROR` to avoid collision with PowerShell's automatic `$Error` variable, and fix the `Write-Host` module qualifier. (#38634) Thanks @ademczuk.
 
 ## 2026.3.2
 
