@@ -1429,6 +1429,27 @@ describe("applyExtraParamsToAgent", () => {
     expect(payload).not.toHaveProperty("store");
   });
 
+  it("preserves store when supportsStore is undefined (compat exists but flag absent)", () => {
+    const payload = runResponsesPayloadMutationCase({
+      applyProvider: "custom-openai-responses",
+      applyModelId: "some-model",
+      model: {
+        api: "openai-responses",
+        provider: "custom-openai-responses",
+        id: "some-model",
+        name: "some-model",
+        baseUrl: "https://proxy.example.com/v1",
+        reasoning: false,
+        input: ["text"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 128_000,
+        maxTokens: 16_384,
+        compat: {},
+      } as unknown as Model<"openai-responses">,
+    });
+    expect(payload.store).toBe(false);
+  });
+
   it("auto-injects OpenAI Responses context_management compaction for direct OpenAI models", () => {
     const payload = runResponsesPayloadMutationCase({
       applyProvider: "openai",

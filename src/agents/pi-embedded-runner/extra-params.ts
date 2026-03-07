@@ -329,6 +329,7 @@ function createOpenAIResponsesContextManagementWrapper(
             payloadObj.store = true;
           }
           if (stripStore) {
+            log.debug(`stripping store from payload for ${model.provider}/${model.id} (supportsStore=false)`);
             delete payloadObj.store;
           }
           if (useServerCompaction && payloadObj.context_management === undefined) {
