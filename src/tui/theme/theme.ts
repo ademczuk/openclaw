@@ -19,10 +19,10 @@ function isLightBackground(): boolean {
   }
 
   const colorfgbg = process.env.COLORFGBG;
-  if (colorfgbg) {
-    const parts = colorfgbg.split(";");
-    const bg = Number.parseInt(parts[parts.length - 1] ?? "", 10);
-    if (!Number.isNaN(bg)) {
+  if (colorfgbg && colorfgbg.length <= 64) {
+    const sep = colorfgbg.lastIndexOf(";");
+    const bg = Number.parseInt(sep >= 0 ? colorfgbg.slice(sep + 1) : colorfgbg, 10);
+    if (bg >= 0 && bg <= 255) {
       // 16-colour palette: 0-6 dark, 7 silver (light), 8-14 dark, 15 white (light).
       if (bg <= 15) {
         return bg === 7 || bg === 15;
