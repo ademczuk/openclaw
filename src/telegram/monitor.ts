@@ -70,6 +70,9 @@ const POLL_WATCHDOG_INTERVAL_MS = 30_000;
 type TelegramBot = ReturnType<typeof createTelegramBot>;
 
 function normalizePersistedUpdateId(value: number | null): number | null {
+  if (value === null) {
+    return null;
+  }
   if (!Number.isSafeInteger(value) || value < 0) {
     return null;
   }
@@ -370,6 +373,9 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
           throw err;
         }
         const isConflict = isGetUpdatesConflict(err);
+        if (isConflict) {
+          webhookCleared = false;
+        }
         const isRecoverable = isRecoverableTelegramNetworkError(err, { context: "polling" });
         if (!isConflict && !isRecoverable) {
           throw err;

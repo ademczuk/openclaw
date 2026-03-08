@@ -31,6 +31,9 @@ export {
   addWildcardAllowFrom,
   mergeAllowFromEntries,
   promptAccountId,
+  resolveAccountIdForConfigure,
+  splitOnboardingEntries,
+  setTopLevelChannelDmPolicyWithAllowFrom,
 } from "../channels/plugins/onboarding/helpers.js";
 export { PAIRING_APPROVED_MESSAGE } from "../channels/plugins/pairing-message.js";
 export {
@@ -71,6 +74,10 @@ export type { WizardPrompter } from "../wizard/prompts.js";
 export { resolveInboundRouteEnvelopeBuilderWithRuntime } from "./inbound-envelope.js";
 export { createScopedPairingAccess } from "./pairing-access.js";
 export { issuePairingChallenge } from "../pairing/pairing-challenge.js";
+export {
+  evaluateGroupRouteAccessForPolicy,
+  resolveSenderScopedGroupPolicy,
+} from "./group-access.js";
 export { extractToolSend } from "./tool-send.js";
 export { resolveWebhookPath } from "./webhook-path.js";
 export type { WebhookInFlightLimiter } from "./webhook-request-guards.js";
@@ -83,4 +90,5 @@ export {
   registerWebhookTargetWithPluginRoute,
   resolveWebhookTargets,
   resolveWebhookTargetWithAuthOrReject,
+  withResolvedWebhookRequestPipeline,
 } from "./webhook-targets.js";
