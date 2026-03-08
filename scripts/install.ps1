@@ -127,7 +127,7 @@ function Install-Node {
     if (Get-Command winget -ErrorAction SilentlyContinue) {
         Write-Host "  Using winget..." -Level info
         try {
-            winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements 2>&1 | Out-Null
+            winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements 2>&1 | Out-Host
             # Refresh PATH
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             Write-Host "  Node.js installed via winget" -Level success
@@ -141,7 +141,7 @@ function Install-Node {
     if (Get-Command choco -ErrorAction SilentlyContinue) {
         Write-Host "  Using chocolatey..." -Level info
         try {
-            choco install nodejs-lts -y 2>&1 | Out-Null
+            choco install nodejs-lts -y 2>&1 | Out-Host
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             Write-Host "  Node.js installed via chocolatey" -Level success
             return $true
@@ -154,7 +154,7 @@ function Install-Node {
     if (Get-Command scoop -ErrorAction SilentlyContinue) {
         Write-Host "  Using scoop..." -Level info
         try {
-            scoop install nodejs-lts 2>&1 | Out-Null
+            scoop install nodejs-lts 2>&1 | Out-Host
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             Write-Host "  Node.js installed via scoop" -Level success
             return $true
@@ -197,7 +197,7 @@ function Install-Git {
     if (Get-Command winget -ErrorAction SilentlyContinue) {
         Write-Host "  Installing Git via winget..." -Level info
         try {
-            winget install Git.Git --accept-package-agreements --accept-source-agreements 2>&1 | Out-Null
+            winget install Git.Git --accept-package-agreements --accept-source-agreements 2>&1 | Out-Host
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             Write-Host "  Git installed" -Level success
             return $true
@@ -225,12 +225,11 @@ function Install-OpenClawNpm {
     Write-Host "Installing OpenClaw (openclaw@$Version)..." -Level info
     
     try {
-        npm install -g openclaw@$Version --no-fund --no-audit 2>&1 | Out-Null
+        npm install -g openclaw@$Version --no-fund --no-audit 2>&1 | Out-Host
         # npm is a native command — non-zero exit codes don't throw in
         # PowerShell, so check $LASTEXITCODE explicitly.
-        # Out-Null prevents output from polluting the function's return
-        # pipeline (a multi-element array always evaluates as $true,
-        # silently swallowing failures in boolean checks).
+        # Out-Host sends output to the console (so users can read errors)
+        # while keeping it off the pipeline (prevents return-value pollution).
         if ($LASTEXITCODE -ne 0) {
             Write-Host "npm install failed (exit code $LASTEXITCODE)" -Level error
             return $false
@@ -250,14 +249,14 @@ function Install-OpenClawGit {
 
     if (!(Test-Path $RepoDir)) {
         Write-Host "  Cloning repository..." -Level info
-        git clone https://github.com/openclaw/openclaw.git $RepoDir 2>&1 | Out-Null
+        git clone https://github.com/openclaw/openclaw.git $RepoDir 2>&1 | Out-Host
         if ($LASTEXITCODE -ne 0) {
             Write-Host "git clone failed (exit code $LASTEXITCODE)" -Level error
             return $false
         }
     } elseif ($Update) {
         Write-Host "  Updating repository..." -Level info
-        git -C $RepoDir pull --rebase 2>&1 | Out-Null
+        git -C $RepoDir pull --rebase 2>&1 | Out-Host
         if ($LASTEXITCODE -ne 0) {
             Write-Host "git pull failed (exit code $LASTEXITCODE)" -Level error
             return $false
@@ -267,7 +266,7 @@ function Install-OpenClawGit {
     # Install pnpm if not present
     if (!(Get-Command pnpm -ErrorAction SilentlyContinue)) {
         Write-Host "  Installing pnpm..." -Level info
-        npm install -g pnpm 2>&1 | Out-Null
+        npm install -g pnpm 2>&1 | Out-Host
         if ($LASTEXITCODE -ne 0) {
             Write-Host "pnpm install failed (exit code $LASTEXITCODE)" -Level error
             return $false
@@ -276,7 +275,7 @@ function Install-OpenClawGit {
 
     # Install dependencies
     Write-Host "  Installing dependencies..." -Level info
-    pnpm install --dir $RepoDir 2>&1 | Out-Null
+    pnpm install --dir $RepoDir 2>&1 | Out-Host
     if ($LASTEXITCODE -ne 0) {
         Write-Host "pnpm install failed (exit code $LASTEXITCODE)" -Level error
         return $false
@@ -284,7 +283,7 @@ function Install-OpenClawGit {
 
     # Build
     Write-Host "  Building..." -Level info
-    pnpm --dir $RepoDir build 2>&1 | Out-Null
+    pnpm --dir $RepoDir build 2>&1 | Out-Host
     if ($LASTEXITCODE -ne 0) {
         Write-Host "build failed (exit code $LASTEXITCODE)" -Level error
         return $false
