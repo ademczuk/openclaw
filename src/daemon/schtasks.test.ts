@@ -23,6 +23,68 @@ describe("schtasks runtime parsing", () => {
       lastRunResult: "0x0",
     });
   });
+
+  it("parses Win 11 English output where key is 'Last Result' instead of 'Last Run Result'", () => {
+    const output = [
+      "Folder: \\",
+      "HostName: DESKTOP-ABC",
+      "TaskName: \\OpenClaw Gateway",
+      "Status: Running",
+      "Last Run Time: 05/03/2026 16:48:37",
+      "Last Result: 267009",
+      "Creator: DESKTOP-ABC\\user",
+    ].join("\r\n");
+    expect(parseSchtasksQuery(output)).toEqual({
+      status: "Running",
+      lastRunTime: "05/03/2026 16:48:37",
+      lastRunResult: "267009",
+    });
+  });
+
+  it("extracts result code from German locale output via numeric fallback", () => {
+    // German schtasks uses "Letztes Ergebnis" for the result code key.
+    const output = [
+      "Aufgabenname: \\OpenClaw Gateway",
+      "Status: Wird ausgeführt",
+      "Letzte Laufzeit: 08/03/2026 09:12:00",
+      "Letztes Ergebnis: 0x41301",
+    ].join("\r\n");
+    const parsed = parseSchtasksQuery(output);
+    expect(parsed.lastRunResult).toBe("0x41301");
+  });
+
+  it("extracts decimal result code from French locale output via numeric fallback", () => {
+    // French schtasks uses "Dernier résultat" for the result code key.
+    const output = [
+      "Nom de la tâche: \\OpenClaw Gateway",
+      "État: En cours d'exécution",
+      "Heure de dernière exécution: 08/03/2026 09:12:00",
+      "Dernier résultat: 267009",
+    ].join("\r\n");
+    const parsed = parseSchtasksQuery(output);
+    expect(parsed.lastRunResult).toBe("267009");
+  });
+
+  it("does not extract non-numeric values via fallback", () => {
+    // When all values are non-numeric strings, lastRunResult should be undefined.
+    const output = ["TaskName: \\OpenClaw Gateway", "Status: Ready", "Last Run Time: Never"].join(
+      "\r\n",
+    );
+    const parsed = parseSchtasksQuery(output);
+    expect(parsed.lastRunResult).toBeUndefined();
+  });
+
+  it("ignores small integers from unrelated fields like Instances or Priority", () => {
+    // "Instances: 1" and "Priority: 7" should not be captured as result codes.
+    const output = [
+      "Aufgabenname: \\OpenClaw Gateway",
+      "Status: Bereit",
+      "Instanzen: 1",
+      "Priorität: 7",
+    ].join("\r\n");
+    const parsed = parseSchtasksQuery(output);
+    expect(parsed.lastRunResult).toBeUndefined();
+  });
 });
 
 describe("scheduled task runtime derivation", () => {
@@ -62,6 +124,43 @@ describe("scheduled task runtime derivation", () => {
       status: "stopped",
       detail: "Task reports Running but Last Run Result=0x0; treating as stale runtime state.",
     });
+  });
+
+  it("detects running via result code when status is non-English (German)", () => {
+    // German "Wird ausgeführt" is not recognized as English "Running",
+    // but the result code 0x41301 is authoritative.
+    expect(
+      deriveScheduledTaskRuntimeStatus({
+        status: "Wird ausgeführt",
+        lastRunResult: "0x41301",
+      }),
+    ).toEqual({ status: "running" });
+  });
+
+  it("detects running via decimal result code on non-English locale", () => {
+    expect(
+      deriveScheduledTaskRuntimeStatus({
+        status: "En cours d'exécution",
+        lastRunResult: "267009",
+      }),
+    ).toEqual({ status: "running" });
+  });
+
+  it("returns stopped for non-English status with non-running result code", () => {
+    expect(
+      deriveScheduledTaskRuntimeStatus({
+        status: "Wird ausgeführt",
+        lastRunResult: "0x0",
+      }),
+    ).toEqual({ status: "stopped" });
+  });
+
+  it("returns stopped when no status and result code is present", () => {
+    expect(
+      deriveScheduledTaskRuntimeStatus({
+        lastRunResult: "0x0",
+      }),
+    ).toEqual({ status: "stopped" });
   });
 });
 
