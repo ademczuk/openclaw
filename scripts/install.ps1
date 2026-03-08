@@ -18,18 +18,21 @@ $ErrorActionPreference = "Stop"
 # are not redirected (piped). The try/catch ensures Read-Host errors never
 # mask the original failure that brought us here.
 function Wait-BeforeExit {
-    $isCI = (Test-Path env:CI) -or (Test-Path env:GITHUB_ACTIONS) -or
-            (Test-Path env:TF_BUILD) -or (Test-Path env:BUILD_BUILDID)
-    $canPrompt = ($Host.Name -eq 'ConsoleHost') -and
-                 -not [Console]::IsInputRedirected -and
-                 -not [Console]::IsOutputRedirected
-    if (-not $isCI -and $canPrompt) {
-        try {
+    try {
+        $isCI = (Test-Path env:CI) -or (Test-Path env:GITHUB_ACTIONS) -or
+                (Test-Path env:TF_BUILD) -or (Test-Path env:BUILD_BUILDID)
+        # [Console]::IsInputRedirected can throw on systems without a real
+        # console handle (services, scheduled tasks), so keep it inside
+        # the try/catch to avoid masking the original failure.
+        $canPrompt = ($Host.Name -eq 'ConsoleHost') -and
+                     -not [Console]::IsInputRedirected -and
+                     -not [Console]::IsOutputRedirected
+        if (-not $isCI -and $canPrompt) {
             Microsoft.PowerShell.Utility\Write-Host ""
             [void](Read-Host 'Press Enter to close this window')
-        } catch {
-            # silently skip — never obscure the original error
         }
+    } catch {
+        # silently skip — never obscure the original error
     }
 }
 
@@ -249,14 +252,14 @@ function Install-OpenClawGit {
 
     if (!(Test-Path $RepoDir)) {
         Write-Host "  Cloning repository..." -Level info
-        git clone https://github.com/openclaw/openclaw.git $RepoDir 2>&1 | Out-Host
+        git clone -- https://github.com/openclaw/openclaw.git "$RepoDir" 2>&1 | Out-Host
         if ($LASTEXITCODE -ne 0) {
             Write-Host "git clone failed (exit code $LASTEXITCODE)" -Level error
             return $false
         }
     } elseif ($Update) {
         Write-Host "  Updating repository..." -Level info
-        git -C $RepoDir pull --rebase 2>&1 | Out-Host
+        git -C "$RepoDir" pull --rebase 2>&1 | Out-Host
         if ($LASTEXITCODE -ne 0) {
             Write-Host "git pull failed (exit code $LASTEXITCODE)" -Level error
             return $false
