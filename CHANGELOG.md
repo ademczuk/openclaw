@@ -15,6 +15,7 @@ Docs: https://docs.openclaw.ai
 - Models/Kimi Coding: send `anthropic-messages` tools in native Anthropic format again so `kimi-coding` stops degrading tool calls into XML/plain-text pseudo invocations instead of real `tool_use` blocks. (#38669, #39907, #40552) Thanks @opriz.
 - Context engine/tests: add bundled-registry regression coverage for cross-chunk resolution, plugin-sdk re-exports, and concurrent chunk registration. (#40460) thanks @dsantoreis.
 - Agents/embedded runner: bound compaction retry waiting and drain embedded runs during SIGUSR1 restart so session lanes recover instead of staying blocked behind compaction. (#40324) thanks @cgdusek.
+- Discord/voice: catch `ffprobe` ENOENT in `getVoiceMessageMetadata` so a missing ffprobe binary returns fallback duration (0) and placeholder waveform instead of crashing the agent WebSocket. (#40382)
 
 ## 2026.3.8
 

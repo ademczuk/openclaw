@@ -81,7 +81,46 @@ vi.mock("../infra/tmp-openclaw-dir.js", () => ({
   resolvePreferredOpenClawTmpDir: () => "/tmp",
 }));
 
-const { ensureOggOpus } = await import("./voice-message.js");
+const { ensureOggOpus, getAudioDuration, getVoiceMessageMetadata } =
+  await import("./voice-message.js");
+
+describe("getAudioDuration", () => {
+  beforeEach(() => {
+    execCalls.length = 0;
+    mockExecResults.length = 0;
+  });
+
+  it("parses duration from ffprobe output", async () => {
+    mockExecResults.push({ stdout: "12.34\n" });
+    const duration = await getAudioDuration("/tmp/test.ogg");
+    expect(duration).toBe(12.34);
+  });
+
+  it("throws when ffprobe is not installed", async () => {
+    const enoent = Object.assign(new Error("spawn ffprobe ENOENT"), { code: "ENOENT" });
+    mockExecResults.push({ error: enoent as NodeJS.ErrnoException });
+    await expect(getAudioDuration("/tmp/test.ogg")).rejects.toThrow(/Failed to get audio duration/);
+  });
+});
+
+describe("getVoiceMessageMetadata", () => {
+  beforeEach(() => {
+    execCalls.length = 0;
+    mockExecResults.length = 0;
+  });
+
+  it("returns fallback duration when ffprobe fails", async () => {
+    const enoent = Object.assign(new Error("spawn ffprobe ENOENT"), { code: "ENOENT" });
+    // getAudioDuration call → fails
+    mockExecResults.push({ error: enoent as NodeJS.ErrnoException });
+    // generateWaveform → ffmpeg pcm extraction call → fails (triggers placeholder)
+    mockExecResults.push({ error: new Error("no ffmpeg") as NodeJS.ErrnoException });
+
+    const metadata = await getVoiceMessageMetadata("/tmp/test.ogg");
+    expect(metadata.durationSecs).toBe(0);
+    expect(metadata.waveform).toBeTruthy();
+  });
+});
 
 describe("ensureOggOpus", () => {
   beforeEach(() => {

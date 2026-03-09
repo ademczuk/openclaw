@@ -214,7 +214,7 @@ export async function ensureOggOpus(filePath: string): Promise<{ path: string; c
  */
 export async function getVoiceMessageMetadata(filePath: string): Promise<VoiceMessageMetadata> {
   const [durationSecs, waveform] = await Promise.all([
-    getAudioDuration(filePath),
+    getAudioDuration(filePath).catch(() => 0),
     generateWaveform(filePath),
   ]);
 
