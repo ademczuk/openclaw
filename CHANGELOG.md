@@ -12,6 +12,7 @@ Docs: https://docs.openclaw.ai
 
 - macOS/LaunchAgent install: tighten LaunchAgent directory and plist permissions during install so launchd bootstrap does not fail when the target home path or generated plist inherited group/world-writable modes.
 - Gateway/Control UI: keep dashboard auth tokens in session-scoped browser storage so same-tab refreshes preserve remote token auth without restoring long-lived localStorage token persistence, while scoping tokens to the selected gateway URL and fragment-only bootstrap flow. (#40892) thanks @velvet-shark.
+- Daemon/Windows schtasks locale parsing: add a numeric-value fallback for non-English locales where the result-code key is localised, harden the fallback to return undefined on ambiguous matches rather than trusting insertion order, and handle abbreviated `Last Run` key variants from older Windows locales. (#39312) Thanks @ademczuk.
 
 ## 2026.3.8
 
