@@ -12,6 +12,7 @@ Docs: https://docs.openclaw.ai
 
 - macOS/LaunchAgent install: tighten LaunchAgent directory and plist permissions during install so launchd bootstrap does not fail when the target home path or generated plist inherited group/world-writable modes.
 - Gateway/Control UI: keep dashboard auth tokens in session-scoped browser storage so same-tab refreshes preserve remote token auth without restoring long-lived localStorage token persistence, while scoping tokens to the selected gateway URL and fragment-only bootstrap flow. (#40892) thanks @velvet-shark.
+- CLI/update: surface an EBUSY recovery hint when a running process locks the install directory during npm global update on Windows, and scope detection to the rename syscall to avoid false positives. (#40724) Thanks @ademczuk.
 
 ## 2026.3.8
 
