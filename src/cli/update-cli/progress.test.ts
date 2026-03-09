@@ -48,8 +48,17 @@ describe("inferUpdateFailureHints", () => {
       "npm error code EBUSY\nnpm error syscall rename\nnpm error path C:\\node_modules\\openclaw\nnpm error errno -4082",
     );
     const hints = inferUpdateFailureHints(result);
+    expect(hints).toHaveLength(3);
     expect(hints.join("\n")).toContain("EBUSY");
     expect(hints.join("\n")).toContain("openclaw gateway stop");
+  });
+
+  it("does not return EBUSY hint when EBUSY is not from a rename syscall", () => {
+    const result = makeResult(
+      "global update (omit optional)",
+      "npm error code EBUSY\nnpm error syscall open\nnpm error errno -4082",
+    );
+    expect(inferUpdateFailureHints(result)).toEqual([]);
   });
 
   it("does not return npm hints for non-npm install modes", () => {
