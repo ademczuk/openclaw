@@ -131,6 +131,7 @@ function Install-Node {
         Write-Host "  Using winget..." -Level info
         try {
             winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements 2>&1 | Out-Host
+            if ($LASTEXITCODE -ne 0) { throw "winget exited with code $LASTEXITCODE" }
             # Refresh PATH
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             Write-Host "  Node.js installed via winget" -Level success
@@ -145,6 +146,7 @@ function Install-Node {
         Write-Host "  Using chocolatey..." -Level info
         try {
             choco install nodejs-lts -y 2>&1 | Out-Host
+            if ($LASTEXITCODE -ne 0) { throw "choco exited with code $LASTEXITCODE" }
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             Write-Host "  Node.js installed via chocolatey" -Level success
             return $true
@@ -158,6 +160,7 @@ function Install-Node {
         Write-Host "  Using scoop..." -Level info
         try {
             scoop install nodejs-lts 2>&1 | Out-Host
+            if ($LASTEXITCODE -ne 0) { throw "scoop exited with code $LASTEXITCODE" }
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             Write-Host "  Node.js installed via scoop" -Level success
             return $true
@@ -201,6 +204,7 @@ function Install-Git {
         Write-Host "  Installing Git via winget..." -Level info
         try {
             winget install Git.Git --accept-package-agreements --accept-source-agreements 2>&1 | Out-Host
+            if ($LASTEXITCODE -ne 0) { throw "winget exited with code $LASTEXITCODE" }
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             Write-Host "  Git installed" -Level success
             return $true
