@@ -1,11 +1,19 @@
 import { ChannelType } from "@buape/carbon";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const logDebugMock = vi.hoisted(() => vi.fn());
 const transcribeFirstAudioMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../../media-understanding/audio-preflight.js", () => ({
   transcribeFirstAudio: (...args: unknown[]) => transcribeFirstAudioMock(...args),
 }));
+vi.mock("../../logger.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../logger.js")>();
+  return {
+    ...actual,
+    logDebug: (...args: unknown[]) => logDebugMock(...args),
+  };
+});
 import {
   __testing as sessionBindingTesting,
   registerSessionBindingAdapter,
@@ -381,6 +389,32 @@ describe("preflightDiscordMessage", () => {
     expect(result).not.toBeNull();
     expect(result?.boundSessionKey).toBe(threadBinding.targetSessionKey);
     expect(result?.shouldRequireMention).toBe(false);
+  });
+
+  it("drops bot messages when allowBots is not set (defaults to off)", async () => {
+    const channelId = "channel-bot-off";
+    const guildId = "guild-bot-off";
+    const message = createMessage({
+      id: "m-bot-off",
+      channelId,
+      content: "relay chatter",
+      author: {
+        id: "relay-bot-default",
+        bot: true,
+        username: "RelayDefault",
+      },
+    });
+
+    logDebugMock.mockClear();
+    const result = await runGuildPreflight({
+      channelId,
+      guildId,
+      message,
+      discordConfig: {} as DiscordConfig,
+    });
+
+    expect(result).toBeNull();
+    expect(logDebugMock).toHaveBeenCalledWith(expect.stringContaining("allowBots not enabled"));
   });
 
   it("drops bot messages without mention when allowBots=mentions", async () => {

@@ -30,6 +30,7 @@ import { logDebug } from "../../logger.js";
 import { getChildLogger } from "../../logging.js";
 import { buildPairingReply } from "../../pairing/pairing-messages.js";
 import { DEFAULT_ACCOUNT_ID } from "../../routing/session-key.js";
+import { sanitizeForLog } from "../../terminal/ansi.js";
 import { fetchPluralKitMessageInfo } from "../pluralkit.js";
 import { sendMessageDiscord } from "../send.js";
 import {
@@ -187,7 +188,9 @@ export async function preflightDiscordMessage(
 
   if (author.bot) {
     if (allowBotsMode === "off" && !sender.isPluralKit) {
-      logVerbose("discord: drop bot message (allowBots=false)");
+      logDebug(
+        `[discord-preflight] drop: bot message from ${sanitizeForLog(author.username ?? author.id)} (allowBots not enabled; set channels.discord.allowBots to true or "mentions" to accept bot messages)`,
+      );
       return null;
     }
   }
