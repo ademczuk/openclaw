@@ -30,7 +30,7 @@ describe("sendMessage channel normalization", () => {
   it("threads resolved cfg through alias + target normalization in outbound dispatch", async () => {
     const resolvedCfg = {
       __resolvedCfgMarker: "cfg-from-secret-resolution",
-      channels: {},
+      channels: { imessage: {} },
     } as Record<string, unknown>;
     const seen: {
       resolveCfg?: unknown;
@@ -115,7 +115,7 @@ describe("sendMessage channel normalization", () => {
       ]),
     );
     const result = await sendMessage({
-      cfg: {},
+      cfg: { channels: { msteams: {} } },
       to: "conversation:19:abc@thread.tacv2",
       content: "hi",
       channel: "teams",
@@ -138,7 +138,7 @@ describe("sendMessage channel normalization", () => {
       ]),
     );
     const result = await sendMessage({
-      cfg: {},
+      cfg: { channels: { imessage: {} } },
       to: "someone@example.com",
       content: "hi",
       channel: "imsg",
@@ -166,7 +166,7 @@ describe("sendMessage replyToId threading", () => {
     const capturedCtx = setupMattermostCapture();
 
     await sendMessage({
-      cfg: {},
+      cfg: { channels: { mattermost: {} } },
       to: "channel:town-square",
       content: "thread reply",
       channel: "mattermost",
@@ -181,7 +181,7 @@ describe("sendMessage replyToId threading", () => {
     const capturedCtx = setupMattermostCapture();
 
     await sendMessage({
-      cfg: {},
+      cfg: { channels: { mattermost: {} } },
       to: "channel:town-square",
       content: "topic reply",
       channel: "mattermost",
@@ -210,7 +210,7 @@ describe("sendPoll channel normalization", () => {
     );
 
     const result = await sendPoll({
-      cfg: {},
+      cfg: { channels: { msteams: {} } },
       to: "conversation:19:abc@thread.tacv2",
       question: "Lunch?",
       options: ["Pizza", "Sushi"],
@@ -246,7 +246,7 @@ describe("gateway url override hardening", () => {
 
     callGatewayMock.mockResolvedValueOnce({ messageId: "m1" });
     await sendMessage({
-      cfg: {},
+      cfg: { channels: { mattermost: {} } },
       to: "channel:town-square",
       content: "hi",
       channel: "mattermost",
@@ -274,7 +274,7 @@ describe("gateway url override hardening", () => {
 
     callGatewayMock.mockResolvedValueOnce({ messageId: "m-agent" });
     await sendMessage({
-      cfg: {},
+      cfg: { channels: { mattermost: {} } },
       to: "channel:town-square",
       content: "hi",
       channel: "mattermost",

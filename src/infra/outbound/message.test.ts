@@ -55,7 +55,7 @@ describe("sendMessage", () => {
 
   it("passes explicit agentId to outbound delivery for scoped media roots", async () => {
     await sendMessage({
-      cfg: {},
+      cfg: { channels: { telegram: {} } },
       channel: "telegram",
       to: "123456",
       content: "hi",
