@@ -522,6 +522,9 @@
               "apiKey": {
                 "type": "string"
               },
+              "baseUrl": {
+                "type": "string"
+              },
               "model": {
                 "type": "string"
               },

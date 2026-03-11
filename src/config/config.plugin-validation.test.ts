@@ -279,7 +279,7 @@ describe("config plugin validation", () => {
     expect(res.ok).toBe(true);
   });
 
-  it("accepts voice-call OpenAI TTS speed and instructions config fields", async () => {
+  it("accepts voice-call OpenAI TTS speed, instructions, and baseUrl config fields", async () => {
     const res = validateInSuite({
       agents: { list: [{ id: "pi" }] },
       plugins: {
@@ -290,6 +290,7 @@ describe("config plugin validation", () => {
             config: {
               tts: {
                 openai: {
+                  baseUrl: "http://localhost:8880/v1",
                   voice: "alloy",
                   speed: 1.5,
                   instructions: "Speak in a cheerful tone",
