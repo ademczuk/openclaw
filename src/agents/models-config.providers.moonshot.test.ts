@@ -39,6 +39,31 @@ describe("moonshot implicit provider (#33637)", () => {
       expect(providers?.moonshot).toBeDefined();
       expect(providers?.moonshot?.baseUrl).toBe(MOONSHOT_CN_BASE_URL);
       expect(providers?.moonshot?.apiKey).toBeDefined();
+      expect(providers?.moonshot?.models?.[0]?.compat?.supportsUsageInStreaming).toBe(true);
+    } finally {
+      envSnapshot.restore();
+    }
+  });
+
+  it("keeps streaming usage opt-in disabled for custom Moonshot-compatible baseUrls", async () => {
+    const agentDir = mkdtempSync(join(tmpdir(), "openclaw-test-"));
+    const envSnapshot = captureEnv(["MOONSHOT_API_KEY"]);
+    process.env.MOONSHOT_API_KEY = "sk-test-custom";
+
+    try {
+      const providers = await resolveImplicitProviders({
+        agentDir,
+        explicitProviders: {
+          moonshot: {
+            baseUrl: "https://proxy.example.com/v1",
+            api: "openai-completions",
+            models: [],
+          },
+        },
+      });
+      expect(providers?.moonshot).toBeDefined();
+      expect(providers?.moonshot?.baseUrl).toBe("https://proxy.example.com/v1");
+      expect(providers?.moonshot?.models?.[0]?.compat?.supportsUsageInStreaming).toBeUndefined();
     } finally {
       envSnapshot.restore();
     }
