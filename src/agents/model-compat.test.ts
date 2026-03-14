@@ -273,7 +273,7 @@ describe("normalizeModelCompat", () => {
     });
   });
 
-  it("respects explicit supportsDeveloperRole true on non-native endpoints", () => {
+  it("overrides explicit supportsDeveloperRole true on non-native endpoints", () => {
     const model = {
       ...baseModel(),
       provider: "custom-cpa",
@@ -281,10 +281,10 @@ describe("normalizeModelCompat", () => {
       compat: { supportsDeveloperRole: true },
     };
     const normalized = normalizeModelCompat(model);
-    expect(supportsDeveloperRole(normalized)).toBe(true);
+    expect(supportsDeveloperRole(normalized)).toBe(false);
   });
 
-  it("respects explicit supportsUsageInStreaming true on non-native endpoints", () => {
+  it("preserves explicit supportsUsageInStreaming true on non-native endpoints", () => {
     const model = {
       ...baseModel(),
       provider: "custom-cpa",
@@ -293,6 +293,17 @@ describe("normalizeModelCompat", () => {
     };
     const normalized = normalizeModelCompat(model);
     expect(supportsUsageInStreaming(normalized)).toBe(true);
+  });
+
+  it("preserves explicit supportsUsageInStreaming false on non-native endpoints", () => {
+    const model = {
+      ...baseModel(),
+      provider: "custom-cpa",
+      baseUrl: "https://proxy.example.com/v1",
+      compat: { supportsUsageInStreaming: false },
+    };
+    const normalized = normalizeModelCompat(model);
+    expect(supportsUsageInStreaming(normalized)).toBe(false);
   });
 
   it("still forces flags off when not explicitly set by user", () => {
@@ -347,6 +358,15 @@ describe("normalizeModelCompat", () => {
     expect(supportsDeveloperRole(normalized)).toBe(false);
     expect(supportsUsageInStreaming(normalized)).toBe(false);
     expect(supportsStrictMode(normalized)).toBe(false);
+  });
+
+  it("preserves explicit compat when developer role is already forced off", () => {
+    const model = baseModel();
+    model.baseUrl = "https://proxy.example.com/v1";
+    model.compat = { supportsDeveloperRole: false, supportsUsageInStreaming: true };
+    const normalized = normalizeModelCompat(model);
+    expect(supportsDeveloperRole(normalized)).toBe(false);
+    expect(supportsUsageInStreaming(normalized)).toBe(true);
   });
 });
 

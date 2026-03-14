@@ -25,6 +25,9 @@ describe("Model Studio implicit provider", () => {
     const modelIds = provider.models.map((model) => model.id);
     expect(provider.api).toBe("openai-completions");
     expect(provider.baseUrl).toBe("https://coding-intl.dashscope.aliyuncs.com/v1");
+    expect(provider.models.every((model) => model.compat?.supportsUsageInStreaming === true)).toBe(
+      true,
+    );
     expect(modelIds).toContain("qwen3.5-plus");
     expect(modelIds).toContain("qwen3-coder-plus");
     expect(modelIds).toContain("kimi-k2.5");

@@ -36,6 +36,7 @@ function isAnthropicMessagesModel(model: Model<Api>): model is Model<"anthropic-
 function normalizeAnthropicBaseUrl(baseUrl: string): string {
   return baseUrl.replace(/\/v1\/?$/, "");
 }
+
 export function normalizeModelCompat(model: Model<Api>): Model<Api> {
   const baseUrl = model.baseUrl ?? "";
 
@@ -52,12 +53,14 @@ export function normalizeModelCompat(model: Model<Api>): Model<Api> {
     return model;
   }
 
-  // The `developer` role and stream usage chunks are OpenAI-native behaviors.
-  // Many OpenAI-compatible backends reject `developer` and/or emit usage-only
-  // chunks that break strict parsers expecting choices[0]. Additionally, the
-  // `strict` boolean inside tools validation is rejected by several providers
-  // causing tool calls to be ignored. For non-native openai-completions endpoints,
-  // default these compat flags off unless explicitly opted in.
+  // The `developer` role, `strict` tool schemas, and stream usage chunks are
+  // OpenAI-native behaviors. Many compatible backends reject `developer`,
+  // emit usage-only chunks that break strict parsers, or reject the `strict`
+  // boolean in tool definitions. For non-native openai-completions endpoints,
+  // default developer role and strict mode off unless explicitly opted in.
+  //
+  // Streaming usage is preserved from explicit compat flags (set by built-in
+  // provider catalogs or user config); otherwise defaults to false.
   const compat = model.compat ?? undefined;
   // When baseUrl is empty the pi-ai library defaults to api.openai.com, so
   // leave compat unchanged and let default native behavior apply.
@@ -66,11 +69,11 @@ export function normalizeModelCompat(model: Model<Api>): Model<Api> {
     return model;
   }
   const forcedDeveloperRole = compat?.supportsDeveloperRole === true;
-  const forcedUsageStreaming = compat?.supportsUsageInStreaming === true;
+  const hasStreamingUsageOverride = compat?.supportsUsageInStreaming !== undefined;
   const targetStrictMode = compat?.supportsStrictMode ?? false;
   if (
     compat?.supportsDeveloperRole !== undefined &&
-    compat?.supportsUsageInStreaming !== undefined &&
+    hasStreamingUsageOverride &&
     compat?.supportsStrictMode !== undefined
   ) {
     return model;
@@ -83,7 +86,7 @@ export function normalizeModelCompat(model: Model<Api>): Model<Api> {
       ? {
           ...compat,
           supportsDeveloperRole: forcedDeveloperRole || false,
-          supportsUsageInStreaming: forcedUsageStreaming || false,
+          ...(hasStreamingUsageOverride ? {} : { supportsUsageInStreaming: false }),
           supportsStrictMode: targetStrictMode,
         }
       : {

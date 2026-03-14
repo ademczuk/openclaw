@@ -297,6 +297,7 @@ export function buildMoonshotProvider(): ProviderConfig {
         name: "Kimi K2.5",
         reasoning: false,
         input: ["text", "image"],
+        compat: { supportsUsageInStreaming: true },
         cost: MOONSHOT_DEFAULT_COST,
         contextWindow: MOONSHOT_DEFAULT_CONTEXT_WINDOW,
         maxTokens: MOONSHOT_DEFAULT_MAX_TOKENS,
@@ -494,7 +495,13 @@ export function buildModelStudioProvider(): ProviderConfig {
   return {
     baseUrl: MODELSTUDIO_BASE_URL,
     api: "openai-completions",
-    models: MODELSTUDIO_MODEL_CATALOG.map((model) => ({ ...model })),
+    models: MODELSTUDIO_MODEL_CATALOG.map((model) => ({
+      ...model,
+      compat: {
+        ...model.compat,
+        supportsUsageInStreaming: true,
+      },
+    })),
   };
 }
 

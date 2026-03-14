@@ -53,6 +53,7 @@ describe("moonshot implicit provider (#33637)", () => {
       const providers = await resolveImplicitProviders({ agentDir });
       expect(providers?.moonshot).toBeDefined();
       expect(providers?.moonshot?.baseUrl).toBe(MOONSHOT_AI_BASE_URL);
+      expect(providers?.moonshot?.models?.[0]?.compat?.supportsUsageInStreaming).toBe(true);
     } finally {
       envSnapshot.restore();
     }
