@@ -982,7 +982,7 @@ export async function resolveImplicitProviders(
       : implicitBedrock;
   }
 
-  return applyNativeStreamingUsageCompat(providers);
+  return providers;
 }
 
 export async function resolveImplicitCopilotProvider(params: {
