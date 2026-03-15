@@ -226,6 +226,22 @@ describe("ws connect policy", () => {
     expect(shouldSkipControlUiPairing(strict, "operator", true)).toBe(true);
   });
 
+  test("auth.mode=none skips pairing for operator control-ui only", () => {
+    const strict = resolveControlUiAuthPolicy({
+      isControlUi: true,
+      controlUiConfig: undefined,
+      deviceRaw: null,
+    });
+    // Operator + auth.mode=none: skip pairing (the fix for #42931)
+    expect(shouldSkipControlUiPairing(strict, "operator", false, "none")).toBe(true);
+    // Node role + auth.mode=none: still require pairing (prevents #43478 regression)
+    expect(shouldSkipControlUiPairing(strict, "node", false, "none")).toBe(false);
+    // Operator + auth.mode=shared-key: no change, still requires pairing
+    expect(shouldSkipControlUiPairing(strict, "operator", false, "shared-key")).toBe(false);
+    // Operator + no authMode (undefined): no change, still requires pairing
+    expect(shouldSkipControlUiPairing(strict, "operator", false)).toBe(false);
+  });
+
   test("trusted-proxy control-ui bypass only applies to operator + trusted-proxy auth", () => {
     const cases: Array<{
       role: "operator" | "node";

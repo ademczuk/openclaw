@@ -36,8 +36,17 @@ export function shouldSkipControlUiPairing(
   policy: ControlUiAuthPolicy,
   role: GatewayRole,
   trustedProxyAuthOk = false,
+  authMode?: string,
 ): boolean {
   if (trustedProxyAuthOk) {
+    return true;
+  }
+  // When auth is completely disabled (mode=none), there is no shared secret
+  // or token to gate pairing. Requiring pairing in this configuration adds
+  // friction without security value since any client can already connect
+  // without credentials. Scope to operator role so node-role sessions still
+  // need device identity (#43478 was reverted for skipping ALL clients).
+  if (role === "operator" && authMode === "none") {
     return true;
   }
   // dangerouslyDisableDeviceAuth is the break-glass path for Control UI
